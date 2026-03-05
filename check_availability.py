@@ -209,13 +209,22 @@ def get_court_style(court_name, is_new=False, is_removed=False):
         return "white", icon
 
 
-def collect_all_slots(dates: list[datetime.date]):
-    """Collect slots for all facilities and dates."""
+def collect_all_slots(
+    dates: list[datetime.date],
+    facility_filter: list[str] | None = None,
+):
+    """Collect slots for all (or selected) facilities and dates."""
     all_slots = {}
+
+    active_facilities = (
+        {k: v for k, v in facilities.items() if k in facility_filter}
+        if facility_filter
+        else facilities
+    )
 
     console.print("\n🎾 Checking tennis court availability...\n", style="bold blue")
 
-    for facility_name in facilities.keys():
+    for facility_name in active_facilities.keys():
         facility_display_name = facility_name.capitalize()
         all_slots[facility_name] = {}
 
@@ -390,7 +399,7 @@ def get_changes_summary(
     if not previous_slots:
         return changes
 
-    for facility_name in facilities.keys():
+    for facility_name in current_slots.keys():
         facility_display = facility_name.capitalize()
         for date in dates:
             current = current_slots.get(facility_name, {}).get(date, {})
@@ -448,14 +457,14 @@ def _build_new_courts_email_data(
     new_courts_data = {}
     today = datetime.date.today()
     
-    for facility_key in facilities.keys():
+    for facility_key in current_slots.keys():
         facility_new_courts = {}
-        
+
         for date_obj in dates:
             # Skip past dates - only include today and future dates in emails
             if date_obj < today:
                 continue
-                
+
             new_courts, _removed = get_slot_changes(
                 current_slots, previous_slots, facility_key, date_obj
             )
@@ -493,7 +502,7 @@ def _build_new_slots_email_body(
     lines.append("New tennis courts are available:\n")
     today = datetime.date.today()
 
-    for facility_key in facilities.keys():
+    for facility_key in current_slots.keys():
         facility_display = facility_key.capitalize()
         facility_id = facilities[facility_key]
 
@@ -556,6 +565,7 @@ def _get_random_quote() -> str | None:
 def show_legend(
     dates: list[datetime.date],
     between: tuple[datetime.time, datetime.time] | None = None,
+    facility_filter: list[str] | None = None,
 ):
     """Display the legend for court types and status indicators."""
     console.print("\n🎾 Tennis Court Availability Monitor", style="bold blue")
@@ -567,8 +577,11 @@ def show_legend(
         start_str = dates[0].strftime("%Y-%m-%d")
         end_str = dates[-1].strftime("%Y-%m-%d")
         date_summary = f"{start_str} … {end_str} ({len(dates)} dates)"
+
+    monitored = facility_filter or list(facilities.keys())
+    facility_summary = ", ".join(f.capitalize() for f in monitored)
     console.print(
-        f"Monitoring both Frogner and Voldsløkka for: {date_summary}",
+        f"Monitoring {facility_summary} for: {date_summary}",
         style="blue",
     )
     if between:
@@ -712,16 +725,21 @@ def run_monitor(
     dates: list[datetime.date],
     between: tuple[datetime.time, datetime.time] | None = None,
     interval_seconds: int = 300,
+    facility_filter: list[str] | None = None,
+    once: bool = False,
+    quiet: bool = False,
 ):
     """Run the main court availability monitoring loop."""
     # Initialize previous state
     previous_slots = {}
+    error_count = 0
+    _MAX_BACKOFF = 600  # 10 minutes cap
 
-    show_legend(dates, between)
+    show_legend(dates, between, facility_filter)
 
-    while True:  # Infinite loop to keep the script running
+    while True:
         try:
-            current_slots = collect_all_slots(dates)
+            current_slots = collect_all_slots(dates, facility_filter)
             # Apply time filtering (if any)
             if between:
                 for facility_name in list(current_slots.keys()):
@@ -730,6 +748,9 @@ def run_monitor(
                         current_slots[facility_name][date] = _filter_slots_by_between(
                             slots, between
                         )
+
+            # Reset error backoff on successful fetch
+            error_count = 0
 
             # Check for changes (only after first run)
             changes_detected = has_changes(current_slots, previous_slots)
@@ -749,23 +770,23 @@ def run_monitor(
                         previous_slots=previous_slots,
                         dates=dates,
                     )
-                    
+
                     # Get a random quote
                     quote = _get_random_quote()
-                    
+
                     # Send desktop notification
                     send_notification(
                         title="🎾 New Tennis Courts Available!",
                         message=summary,
-                        also_email=False,  # We'll handle email separately with better formatting
+                        also_email=False,
                     )
-                    
+
                     # Send enhanced HTML email notification
                     try:
-                        if new_courts_data:  # Only send if we have new courts
+                        if new_courts_data:
                             send_new_courts_notification(new_courts_data, quote)
                     except Exception as e:
-                        # Fallback to old email system if new one fails
+                        # Fallback to plain-text email if new template fails
                         print(f"[EMAIL] Enhanced email failed, using fallback: {e}")
                         email_body = _build_new_slots_email_body(
                             current_slots=current_slots,
@@ -783,21 +804,26 @@ def run_monitor(
                 if changes:
                     for change in changes:
                         console.print(f"   • {change}", style="green")
-            elif previous_slots:  # Only show "no changes" if this isn't the first run
-                console.print(
-                    "\n✓ No changes detected. Courts status unchanged.",
-                    style="dim green",
-                )
+            elif previous_slots:
+                if not quiet:
+                    console.print(
+                        "\n✓ No changes detected. Courts status unchanged.",
+                        style="dim green",
+                    )
 
-            # Always display current state (with highlighting if there were changes)
-            display_slots_table(
-                current_slots,
-                previous_slots if changes_detected else {},
-                dates,
-            )
+            # Display table: always on first run or when changes found; skip if --quiet and no changes
+            if not quiet or changes_detected or not previous_slots:
+                display_slots_table(
+                    current_slots,
+                    previous_slots if changes_detected else {},
+                    dates,
+                )
 
             # Update previous state
             previous_slots = current_slots.copy()
+
+            if once:
+                break
 
             # Normalize interval
             if interval_seconds <= 0:
@@ -825,9 +851,11 @@ def run_monitor(
             )
             break
         except Exception as e:
+            error_count += 1
+            backoff = min(_MAX_BACKOFF, 60 * (2 ** (error_count - 1)))
             console.print(f"\n❌ Error occurred: {e}", style="red")
-            console.print("Retrying in 1 minute...", style="yellow")
-            time.sleep(60)
+            console.print(f"Retrying in {backoff} seconds...", style="yellow")
+            time.sleep(backoff)
 
 
 def main():
@@ -923,6 +951,30 @@ For more information, visit: https://github.com/your-username/tennis-bot
             "Default: 300 (5 minutes)"
         ),
     )
+    monitor_parser.add_argument(
+        "--facility",
+        type=str,
+        action="append",
+        dest="facilities",
+        metavar="NAME",
+        help=(
+            "Only monitor this facility (can be repeated for multiple). "
+            f"Available: {', '.join(facilities.keys())}. "
+            "Default: all active facilities."
+        ),
+    )
+    monitor_parser.add_argument(
+        "--once",
+        action="store_true",
+        default=False,
+        help="Run a single check and exit instead of looping.",
+    )
+    monitor_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        default=False,
+        help="Only print output when changes are detected; suppress unchanged status.",
+    )
 
     args = parser.parse_args()
 
@@ -958,7 +1010,23 @@ For more information, visit: https://github.com/your-username/tennis-bot
                 raise SystemExit(str(exc)) from exc
 
         interval_seconds = args.interval_seconds
-        run_monitor(dates, between, interval_seconds)
+
+        # Validate --facility names
+        facility_filter = None
+        raw_facilities = getattr(args, "facilities", None)
+        if raw_facilities:
+            unknown = [f for f in raw_facilities if f.lower() not in facilities]
+            if unknown:
+                raise SystemExit(
+                    f"Unknown facility name(s): {', '.join(unknown)}. "
+                    f"Available: {', '.join(facilities.keys())}"
+                )
+            facility_filter = [f.lower() for f in raw_facilities]
+
+        once = getattr(args, "once", False)
+        quiet = getattr(args, "quiet", False)
+
+        run_monitor(dates, between, interval_seconds, facility_filter, once, quiet)
     elif args.command == "test-notifications":
         test_notifications()
     elif args.command == "test-email":

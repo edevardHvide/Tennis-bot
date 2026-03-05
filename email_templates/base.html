@@ -15,315 +15,380 @@
     </noscript>
     <![endif]-->
     <style>
-        /* Reset styles */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        /* Email-safe base styles */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 15px;
             line-height: 1.6;
-            color: #333333;
-            background-color: #f4f7fa;
+            color: #1e293b;
+            background-color: #b03c18;
             margin: 0;
             padding: 0;
             width: 100% !important;
             -webkit-text-size-adjust: 100%;
             -ms-text-size-adjust: 100%;
         }
-        
+
         table {
             border-collapse: collapse;
             mso-table-lspace: 0pt;
             mso-table-rspace: 0pt;
+        }
+
+        img { border: 0; outline: none; text-decoration: none; max-width: 100%; height: auto; }
+
+        a { color: #0ea5e9; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /*
+         * Background: clay court SVG (top-down, 1200x800 viewBox)
+         * Court: x=150-1050 (900px wide), y=100-700 (600px tall)
+         * Doubles sidelines: x=150, x=1050
+         * Singles sidelines: x=262, x=938  (offset = 900 * 1.37/10.97 ≈ 112px)
+         * Net: y=400 (center)
+         * Service lines: y=238 & y=562  (6.4/11.885 * 300 ≈ 162px from net)
+         * Center service line: x=600, y=238-562
+         */
+        .email-wrapper {
             width: 100%;
+            background-color: #b03c18;
+            background-image:
+                linear-gradient(rgba(4,8,18,0.32), rgba(4,8,18,0.32)),
+                url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800'><defs><linearGradient id='bg' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23872b0c'/><stop offset='1' stop-color='%23b03618'/></linearGradient><linearGradient id='ct' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='%23ad4620'/><stop offset='.5' stop-color='%23cc5c30'/><stop offset='1' stop-color='%23ad4620'/></linearGradient><pattern id='tx' width='6' height='3' patternUnits='userSpaceOnUse'><line x1='0' y1='1.5' x2='6' y2='1.5' stroke='%23983818' stroke-width='.9' opacity='.45'/></pattern></defs><rect width='1200' height='800' fill='url(%23bg)'/><rect width='1200' height='800' fill='url(%23tx)'/><rect x='150' y='100' width='900' height='600' fill='url(%23ct)'/><rect x='150' y='100' width='900' height='600' fill='url(%23tx)'/><rect x='150' y='100' width='900' height='3' fill='white' opacity='.93'/><rect x='150' y='697' width='900' height='3' fill='white' opacity='.93'/><rect x='150' y='100' width='3' height='600' fill='white' opacity='.93'/><rect x='1047' y='100' width='3' height='600' fill='white' opacity='.93'/><rect x='262' y='100' width='2' height='600' fill='white' opacity='.88'/><rect x='938' y='100' width='2' height='600' fill='white' opacity='.88'/><rect x='262' y='238' width='678' height='2.5' fill='white' opacity='.88'/><rect x='262' y='562' width='678' height='2.5' fill='white' opacity='.88'/><rect x='599' y='238' width='2' height='162' fill='white' opacity='.88'/><rect x='599' y='400' width='2' height='162' fill='white' opacity='.88'/><rect x='143' y='390' width='9' height='20' rx='3' fill='%23777' opacity='.88'/><rect x='1048' y='390' width='9' height='20' rx='3' fill='%23777' opacity='.88'/><rect x='150' y='400' width='900' height='9' fill='black' opacity='.11'/><line x1='147' y1='400' x2='1053' y2='400' stroke='white' stroke-width='3.5' opacity='.8'/><rect x='597' y='392' width='6' height='16' fill='white' opacity='.72'/></svg>");
+            background-size: cover;
+            background-position: center;
+            padding: 44px 0 52px;
         }
-        
-        img {
-            border: 0;
-            outline: none;
-            text-decoration: none;
-            -ms-interpolation-mode: bicubic;
-            max-width: 100%;
-            height: auto;
-        }
-        
-        /* Container */
+
         .email-container {
             max-width: 600px;
             margin: 0 auto;
             background-color: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
             overflow: hidden;
+            box-shadow: 0 12px 48px rgba(5,2,0,0.45), 0 3px 10px rgba(5,2,0,0.2);
+            border: 1px solid rgba(210,180,160,0.2);
         }
-        
+
         /* Header */
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-align: center;
-            padding: 30px 20px;
+            background-color: #050d1f;
+            background-image: linear-gradient(135deg, #050d1f 0%, #0c1e3e 55%, #0a2a1a 100%);
+            padding: 40px 44px 36px;
         }
-        
+
+        .header-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #00c96b, #10b981);
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            border-radius: 100px;
+            margin-bottom: 18px;
+            box-shadow: 0 0 0 1px rgba(0,201,107,0.3), 0 4px 12px rgba(0,201,107,0.25);
+        }
+
         .header h1 {
             font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: -0.03em;
+            line-height: 1.2;
+            margin-bottom: 8px;
         }
-        
+
         .header .subtitle {
-            font-size: 16px;
-            opacity: 0.95;
-            font-weight: 400;
+            font-size: 14px;
+            color: #64c8a0;
+            font-weight: 500;
         }
-        
+
         /* Content */
         .content {
-            padding: 30px;
+            padding: 36px 44px 40px;
         }
-        
-        .content h2 {
-            color: #2d3748;
-            font-size: 22px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .content p {
-            margin-bottom: 15px;
-            color: #4a5568;
+
+        .content-lead {
+            font-size: 15px;
+            color: #475569;
+            margin-bottom: 28px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #f1f5f9;
             line-height: 1.7;
         }
-        
-        /* Court cards */
-        .court-section {
-            margin-bottom: 30px;
-            background-color: #f8fafc;
-            border-radius: 8px;
-            padding: 20px;
-            border-left: 4px solid #667eea;
+
+        .content-lead strong { color: #0f172a; font-weight: 700; }
+
+        /* Facility card */
+        .facility-section {
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 6px rgba(15,23,42,0.05);
         }
-        
-        .facility-name {
-            font-size: 20px;
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-        }
-        
-        .facility-icon {
-            font-size: 24px;
-            margin-right: 10px;
-        }
-        
-        .date-header {
-            font-size: 16px;
-            font-weight: 500;
-            color: #4a5568;
-            margin: 15px 0 10px 0;
-            padding-bottom: 5px;
+
+        .facility-header {
+            background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+            padding: 14px 20px;
             border-bottom: 1px solid #e2e8f0;
         }
-        
-        .time-slot {
+
+        .facility-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.01em;
+        }
+
+        .facility-body { padding: 4px 20px 18px; }
+
+        /* Date group */
+        .date-group { margin-top: 16px; }
+
+        .date-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        /* Slot row */
+        .slot-row {
             display: flex;
             align-items: center;
-            margin-bottom: 12px;
-            padding: 12px;
-            background-color: white;
+            padding: 8px 0;
+            border-bottom: 1px solid #f8fafc;
+        }
+
+        .slot-row:last-child { border-bottom: none; }
+
+        .slot-time {
+            font-size: 12px;
+            font-weight: 700;
+            color: #334155;
+            background: linear-gradient(135deg, #f1f5f9, #e8edf5);
+            border: 1px solid #dde3ec;
             border-radius: 6px;
-            border: 1px solid #e2e8f0;
-        }
-        
-        .time-badge {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 14px;
-            min-width: 100px;
+            padding: 5px 10px;
+            min-width: 88px;
             text-align: center;
-            margin-right: 15px;
+            margin-right: 12px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
-        
-        .courts-list {
+
+        .slot-time-lg { min-width: 120px; }
+
+        .slot-courts {
             flex: 1;
-            color: #2d3748;
-        }
-        
-        .court-item {
-            display: inline-block;
-            background-color: #edf2f7;
-            color: #2d3748;
-            padding: 4px 10px;
-            border-radius: 15px;
             font-size: 13px;
-            font-weight: 500;
-            margin: 2px 4px 2px 0;
-            border: 1px solid #cbd5e0;
+            color: #334155;
+            line-height: 2;
         }
-        
-        .court-item.new {
-            background: linear-gradient(135deg, #48bb78, #38a169);
-            color: white;
-            border-color: #38a169;
-            box-shadow: 0 2px 4px rgba(72, 187, 120, 0.3);
+
+        /* Court tags */
+        .court-tag {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 9px;
+            border-radius: 6px;
+            margin: 2px 3px 2px 0;
+            border: 1px solid transparent;
+            letter-spacing: 0.01em;
         }
-        
-        .court-item.clay {
-            background-color: #fed7aa;
-            border-color: #f97316;
-            color: #9a3412;
+
+        .court-tag.new {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            color: #14532d;
+            border-color: #86efac;
+            box-shadow: 0 0 0 2px rgba(134,239,172,0.3);
+            font-weight: 700;
         }
-        
-        .court-item.hard {
-            background-color: #bfdbfe;
-            border-color: #3b82f6;
-            color: #1e40af;
+
+        .court-tag.clay {
+            background: linear-gradient(135deg, #ffedd5, #fed7aa);
+            color: #7c2d12;
+            border-color: #fb923c;
         }
-        
-        /* CTA Button */
-        .cta-section {
+
+        .court-tag.hard {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            color: #1e3a8a;
+            border-color: #60a5fa;
+        }
+
+        .court-tag.standard {
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            color: #334155;
+            border-color: #cbd5e1;
+        }
+
+        /* CTA */
+        .cta-wrap {
+            padding: 18px 20px 4px;
             text-align: center;
-            margin: 25px 0;
         }
-        
+
         .cta-button {
             display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            padding: 14px 28px;
-            border-radius: 25px;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+            color: #ffffff !important;
+            text-decoration: none !important;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            padding: 12px 28px;
+            border-radius: 8px;
+            box-shadow: 0 4px 14px rgba(15,23,42,0.3);
         }
-        
+
         .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+            background: linear-gradient(135deg, #1e293b 0%, #243d6a 100%);
+            text-decoration: none !important;
         }
-        
-        /* Quote section */
-        .quote-section {
-            background-color: #f7fafc;
-            border-left: 4px solid #667eea;
-            padding: 20px;
-            margin: 25px 0;
+
+        /* Info / warning boxes */
+        .info-box {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            border: 1px solid #86efac;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin: 24px 0;
+            font-size: 13px;
+            color: #166534;
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, #fefce8, #fef9c3);
+            border: 1px solid #fde68a;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin: 24px 0;
+            font-size: 13px;
+            color: #713f12;
+        }
+
+        /* Quote */
+        .quote-block {
+            border-left: 3px solid #00c96b;
+            padding: 12px 18px;
+            margin: 24px 0;
+            background: linear-gradient(90deg, #f0fdf4, #f8fafc);
             border-radius: 0 8px 8px 0;
-            font-style: italic;
-            color: #4a5568;
-            text-align: center;
         }
-        
+
+        .quote-block p {
+            font-size: 14px;
+            color: #475569;
+            font-style: italic;
+            margin: 0;
+            line-height: 1.7;
+        }
+
+        /* Stats table */
+        .stats-table {
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 4px rgba(15,23,42,0.04);
+        }
+
+        .stats-table td {
+            padding: 13px 18px;
+            font-size: 14px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+        }
+
+        .stats-table tr:nth-child(even) td { background-color: #fafbfc; }
+        .stats-table td:first-child { color: #64748b; width: 55%; }
+        .stats-table td:last-child { font-weight: 700; color: #0f172a; text-align: right; }
+        .stats-table tr:last-child td { border-bottom: none; }
+
+        /* Section heading */
+        .section-heading {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 14px;
+            margin-top: 28px;
+        }
+
         /* Footer */
         .footer {
-            background-color: #2d3748;
-            color: #a0aec0;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border-top: 1px solid #e2e8f0;
+            padding: 24px 44px;
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.8;
             text-align: center;
-            padding: 25px 20px;
-            font-size: 14px;
         }
-        
-        .footer a {
-            color: #667eea;
-            text-decoration: none;
-        }
-        
-        .footer a:hover {
-            text-decoration: underline;
-        }
-        
+
+        .footer a { color: #64748b; }
+        .footer a:hover { color: #334155; }
+
         /* Responsive */
-        @media only screen and (max-width: 600px) {
-            .email-container {
-                margin: 0;
-                border-radius: 0;
-            }
-            
-            .header {
-                padding: 20px 15px;
-            }
-            
-            .header h1 {
-                font-size: 24px;
-            }
-            
-            .content {
-                padding: 20px 15px;
-            }
-            
-            .time-slot {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            
-            .time-badge {
-                margin-right: 0;
-                margin-bottom: 10px;
-            }
-        }
-        
-        /* Dark mode support */
-        @media (prefers-color-scheme: dark) {
-            .email-container {
-                background-color: #1a202c;
-            }
-            
-            .content {
-                color: #e2e8f0;
-            }
-            
-            .content h2 {
-                color: #f7fafc;
-            }
-            
-            .court-section {
-                background-color: #2d3748;
-            }
-            
-            .time-slot {
-                background-color: #4a5568;
-                border-color: #718096;
-            }
+        @media only screen and (max-width: 640px) {
+            .email-wrapper { padding: 0; }
+            .email-container { border-radius: 0; border-left: none; border-right: none; box-shadow: none; }
+            .header { padding: 30px 24px 26px; }
+            .content { padding: 28px 24px 32px; }
+            .footer { padding: 20px 24px; }
+            .cta-wrap { padding: 14px 0 0; }
+            .slot-row { flex-direction: column; align-items: flex-start; }
+            .slot-time { margin-right: 0; margin-bottom: 6px; }
         }
     </style>
 </head>
 <body>
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
         <tr>
-            <td style="padding: 20px 0;">
-                <div class="email-container">
-                    <div class="header">
-                        <h1>🎾 {% block header_title %}Tennis Courts{% endblock %}</h1>
-                        <div class="subtitle">{% block header_subtitle %}Matchi Availability Monitor{% endblock %}</div>
-                    </div>
-                    
-                    <div class="content">
-                        {% block content %}
-                        <!-- Content will be inserted here -->
-                        {% endblock %}
-                    </div>
-                    
-                    <div class="footer">
-                        <p>
-                            📧 You're receiving this because you're monitoring tennis courts on Matchi.se<br>
-                            🤖 Generated by <a href="https://github.com/Joachimmorken/Matchi-availability-bot">Matchi Availability Bot</a><br>
-                            ⏰ {{ timestamp }}
-                        </p>
-                    </div>
-                </div>
+            <td class="email-wrapper">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" align="center" class="email-container" style="max-width:600px;">
+
+                    <!-- Header -->
+                    <tr>
+                        <td class="header">
+                            <div class="header-badge">Matchi Bot</div>
+                            <h1>{% block header_title %}Tennis Court Availability{% endblock %}</h1>
+                            <div class="subtitle">{% block header_subtitle %}Matchi Availability Monitor{% endblock %}</div>
+                        </td>
+                    </tr>
+
+                    <!-- Body -->
+                    <tr>
+                        <td class="content">
+                            {% block content %}{% endblock %}
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td class="footer">
+                            <p>
+                                <strong style="color:#475569;">Matchi Availability Bot</strong><br>
+                                Monitoring tennis courts so you don't have to &mdash; {{ timestamp }}<br>
+                                <a href="https://github.com/Joachimmorken/Matchi-availability-bot">View on GitHub</a>
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
             </td>
         </tr>
     </table>

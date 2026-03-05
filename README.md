@@ -62,7 +62,27 @@ python check_availability.py monitor --days-ahead 0 --between 17-22 --interval-s
 
 # Specific dates
 python check_availability.py monitor --dates 2025-08-20,2025-08-21
+
+# Only check Frogner courts
+python check_availability.py monitor --facility frogner
+
+# Check Frogner and OTA, only evening slots, quietly (only print on changes)
+python check_availability.py monitor --facility frogner --facility ota --between 17-22 --quiet
+
+# Single check and exit (great for cron / Task Scheduler)
+python check_availability.py monitor --once --between 17-22
 ```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--days-ahead N` | `2` | Check today + N days ahead |
+| `--start-date YYYY-MM-DD` | today | Start date for `--days-ahead` |
+| `--dates YYYY-MM-DD,...` | — | Explicit comma-separated dates (overrides above) |
+| `--between HH-HH` | — | Only show slots starting in this window (e.g. `17-22`) |
+| `--interval-seconds N` | `300` | Seconds between checks |
+| `--facility NAME` | all active | Restrict to one facility; repeat for multiple |
+| `--once` | off | Run a single check then exit |
+| `--quiet` | off | Suppress output when nothing changes |
 
 ### Test notifications
 ```powershell

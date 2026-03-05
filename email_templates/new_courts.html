@@ -1,70 +1,71 @@
 {% extends "base.html" %}
 
-{% block title %}🆕 New Tennis Courts Available - Matchi{% endblock %}
+{% block title %}New Tennis Courts Available — Matchi{% endblock %}
 
-{% block header_title %}New Courts Available!{% endblock %}
-{% block header_subtitle %}Fresh tennis slots just opened up{% endblock %}
+{% block header_title %}New Courts Available{% endblock %}
+{% block header_subtitle %}
+    {{ total_new_courts }} new court{{ 's' if total_new_courts != 1 else '' }}
+    across {{ facilities|length }} facilit{{ 'ies' if facilities|length != 1 else 'y' }}
+{% endblock %}
 
 {% block content %}
-<h2>🎉 Great news! New courts are available for booking</h2>
-
-<p style="text-align: center; font-size: 16px; color: #4a5568; margin-bottom: 25px;">
-    We found <strong>{{ total_new_courts }}</strong> new court{{ 's' if total_new_courts != 1 else '' }} 
-    across <strong>{{ facilities|length }}</strong> facilit{{ 'ies' if facilities|length != 1 else 'y' }}
+<p class="content-lead">
+    We found <strong>{{ total_new_courts }} new court{{ 's' if total_new_courts != 1 else '' }}</strong>
+    available for booking at
+    <strong>{{ facilities|length }} facilit{{ 'ies' if facilities|length != 1 else 'y' }}</strong>.
+    The slots below opened recently &mdash; book early to secure your court.
 </p>
 
 {% for facility_data in facilities %}
-<div class="court-section">
-    <div class="facility-name">
-        <span class="facility-icon">🏟️</span>
-        {{ facility_data.name }}
+<div class="facility-section">
+    <div class="facility-header">
+        <div class="facility-title">{{ facility_data.name }}</div>
     </div>
-    
-    {% for date_info in facility_data.dates %}
-    <div class="date-header">
-        📅 {{ date_info.display_name }}
-    </div>
-    
-    {% for time_slot in date_info.time_slots %}
-    <div class="time-slot">
-        <div class="time-badge">{{ time_slot.time }}</div>
-        <div class="courts-list">
-            {% for court in time_slot.courts %}
-            <span class="court-item {{ court.type }} {{ 'new' if court.is_new else '' }}">
-                {% if court.type == 'clay' %}🟡{% elif court.type == 'hard' %}🔵{% else %}⚪{% endif %}
-                {{ court.name }}
-                {% if court.is_new %}✨{% endif %}
-            </span>
+
+    <div class="facility-body">
+        {% for date_info in facility_data.dates %}
+        <div class="date-group">
+            <div class="date-label">{{ date_info.display_name }}</div>
+
+            {% for time_slot in date_info.time_slots %}
+            <a href="{{ time_slot.url }}" style="text-decoration:none; display:block; color:inherit;">
+            <div class="slot-row" style="cursor:pointer;">
+                <div class="slot-time" style="color:#0f172a;">{{ time_slot.time }}</div>
+                <div class="slot-courts">
+                    {% for court in time_slot.courts %}
+                    <span class="court-tag {{ court.type }}{% if court.is_new %} new{% endif %}">
+                        {{ court.name }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            </a>
             {% endfor %}
         </div>
+        {% endfor %}
+
+        {% if facility_data.dates %}
+        <div class="cta-wrap">
+            <a href="{{ facility_data.dates[0].web_url }}" class="cta-button">
+                Book at {{ facility_data.name }}
+            </a>
+        </div>
+        {% endif %}
     </div>
-    {% endfor %}
-    
-    <div class="cta-section">
-        <a href="{{ date_info.booking_url }}" class="cta-button">
-            🎾 Book at {{ facility_data.name }}
-        </a>
-    </div>
-    {% endfor %}
 </div>
 {% endfor %}
 
-<div style="text-align: center; margin: 25px 0; padding: 20px; background-color: #f0f8ff; border-radius: 8px; border: 1px solid #667eea;">
-    <p style="margin: 0; color: #2d3748; font-weight: 500;">
-        ⚡ <strong>Act fast!</strong> These courts are being monitored by others too.
-    </p>
+<div class="info-box">
+    <strong>Heads up:</strong> Court availability can change quickly. Open Matchi directly to confirm availability before booking.
 </div>
 
 {% if quote %}
-<div class="quote-section">
-    <p style="margin: 0; font-size: 15px;">{{ quote }}</p>
+<div class="quote-block">
+    <p>{{ quote }}</p>
 </div>
 {% endif %}
 
-<div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-    <p style="margin: 0; color: #718096; font-size: 14px;">
-        🔔 You'll only receive emails when <strong>new</strong> courts become available.<br>
-        No spam, just the good stuff! 🎾
-    </p>
-</div>
+<p style="font-size: 13px; color: #94a3b8; margin-top: 16px;">
+    You will only receive alerts when new courts become available. No alerts are sent for previously seen courts.
+</p>
 {% endblock %}

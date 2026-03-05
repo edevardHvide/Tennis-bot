@@ -1,46 +1,73 @@
 {% extends "base.html" %}
 
-{% block title %}Daily Summary - Matchi Bot{% endblock %}
+{% block title %}Daily Summary — Matchi Bot{% endblock %}
 
-{% block header_title %}📊 Daily Court Summary{% endblock %}
-{% block header_subtitle %}Your tennis court availability report{% endblock %}
+{% block header_title %}Daily Court Summary{% endblock %}
+{% block header_subtitle %}Tennis court availability report{% endblock %}
 
 {% block content %}
-<div class="alert alert-info">
-    <strong>📈 Daily Report</strong> Here's what happened with court availability today.
-</div>
+<p class="content-lead">
+    Here is a summary of court availability activity monitored today across all configured facilities.
+</p>
 
-<h2>📅 Today's Activity</h2>
-<ul>
-    <li><strong>Monitoring sessions:</strong> {{ stats.monitoring_sessions }}</li>
-    <li><strong>Total courts checked:</strong> {{ stats.total_courts_checked }}</li>
-    <li><strong>New courts found:</strong> {{ stats.new_courts_found }}</li>
-    <li><strong>Notifications sent:</strong> {{ stats.notifications_sent }}</li>
-</ul>
+<div class="section-heading">Today's Activity</div>
+
+<table class="stats-table" role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr>
+        <td>Monitoring sessions</td>
+        <td>{{ stats.monitoring_sessions }}</td>
+    </tr>
+    <tr>
+        <td>Total courts checked</td>
+        <td>{{ stats.total_courts_checked }}</td>
+    </tr>
+    <tr>
+        <td>New courts found</td>
+        <td>{{ stats.new_courts_found }}</td>
+    </tr>
+    <tr>
+        <td>Notifications sent</td>
+        <td>{{ stats.notifications_sent }}</td>
+    </tr>
+</table>
 
 {% if popular_facilities %}
-<h3>🏆 Most Popular Facilities Today</h3>
+<div class="section-heading">Top Facilities</div>
+
 {% for facility in popular_facilities %}
-<div class="court-card">
-    <div class="facility-name">{{ facility.name }}</div>
-    <p><strong>New courts found:</strong> {{ facility.new_courts }}</p>
-    <p><strong>Peak availability time:</strong> {{ facility.peak_time }}</p>
+<div class="facility-section" style="margin-bottom: 12px;">
+    <div class="facility-header">
+        <div class="facility-title">{{ facility.name }}</div>
+    </div>
+    <div class="facility-body">
+        <div class="date-group">
+            <div class="slot-row">
+                <div class="slot-time slot-time-lg">New courts</div>
+                <div class="slot-courts">{{ facility.new_courts }}</div>
+            </div>
+            <div class="slot-row">
+                <div class="slot-time slot-time-lg">Peak time</div>
+                <div class="slot-courts">{{ facility.peak_time }}</div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endfor %}
 {% endif %}
 
 {% if availability_trends %}
-<h3>📈 Availability Trends</h3>
-<ul>
+<div class="section-heading">Availability Trends</div>
+<table class="stats-table" role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
     {% for trend in availability_trends %}
-    <li><strong>{{ trend.time_period }}:</strong> {{ trend.description }}</li>
+    <tr>
+        <td>{{ trend.time_period }}</td>
+        <td>{{ trend.description }}</td>
+    </tr>
     {% endfor %}
-</ul>
+</table>
 {% endif %}
 
-<div class="alert alert-success">
-    <strong>🎾 Keep playing!</strong> 
-    The bot will continue monitoring for new court availability. 
-    Check back tomorrow for another summary!
+<div class="info-box">
+    Monitoring will continue automatically. Check back tomorrow for the next summary.
 </div>
 {% endblock %}

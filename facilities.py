@@ -23,6 +23,13 @@ facilities = {
     "bergentennisarena": 301,
 }
 
+# Display names for facilities (used in emails and UI)
+facility_display_names = {
+    "frogner": "Frogner",
+    "ota": "OTA",
+    "bergentennisarena": "Bergentennisarena",
+}
+
 # Inactive facilities (e.g., winter closures, maintenance)
 # These are preserved for reference but not monitored
 inactive_facilities = {

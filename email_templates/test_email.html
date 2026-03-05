@@ -1,42 +1,53 @@
 {% extends "base.html" %}
 
-{% block title %}📧 Email Test - Matchi Tennis Bot{% endblock %}
+{% block title %}Email Configuration Test — Matchi Bot{% endblock %}
 
-{% block header_title %}Email Test Successful!{% endblock %}
-{% block header_subtitle %}Your SMTP configuration is working perfectly{% endblock %}
+{% block header_title %}Email Configuration Verified{% endblock %}
+{% block header_subtitle %}Your SMTP setup is working correctly{% endblock %}
 
 {% block content %}
-<h2>✅ Congratulations! Your email setup is working</h2>
+<p class="content-lead">
+    This is a confirmation that your email configuration is set up correctly and the bot is ready to send court availability notifications.
+</p>
 
-<p>If you're reading this beautifully formatted email, it means:</p>
+<div class="section-heading">Configuration Status</div>
 
-<div style="background-color: #f0f8ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
-    <ul style="margin: 0; padding-left: 20px; color: #2d3748;">
-        <li style="margin-bottom: 8px;">✅ Your SMTP server connection is working</li>
-        <li style="margin-bottom: 8px;">✅ Authentication credentials are correct</li>
-        <li style="margin-bottom: 8px;">✅ Email delivery is successful</li>
-        <li style="margin-bottom: 8px;">✅ HTML templates are rendering properly</li>
-    </ul>
-</div>
+<table class="stats-table" role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr>
+        <td>SMTP connection</td>
+        <td>OK</td>
+    </tr>
+    <tr>
+        <td>Authentication</td>
+        <td>OK</td>
+    </tr>
+    <tr>
+        <td>Email delivery</td>
+        <td>OK</td>
+    </tr>
+    <tr>
+        <td>HTML templates</td>
+        <td>OK</td>
+    </tr>
+</table>
 
-<p>The tennis court monitoring system is now ready to send you beautiful notifications whenever new courts become available!</p>
+<p style="font-size: 14px; color: #475569; margin-bottom: 24px;">
+    The monitoring system will now send you a notification each time new courts become available on Matchi.se.
+    No action is required — monitoring starts automatically on the next run.
+</p>
 
-<div class="cta-section">
-    <a href="https://www.matchi.se/book/schedule" class="cta-button">
-        🎾 Visit Matchi.se
-    </a>
+<div class="cta-wrap" style="padding: 0 0 8px;">
+    <a href="{{ matchi_url }}" class="cta-button">Open Matchi.se</a>
 </div>
 
 {% if quote %}
-<div class="quote-section">
-    <p style="margin: 0; font-size: 15px;">{{ quote }}</p>
+<div class="quote-block" style="margin-top: 28px;">
+    <p>{{ quote }}</p>
 </div>
 {% endif %}
 
-<div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 6px; margin: 20px 0;">
-    <p style="margin: 0; color: #856404; font-size: 14px;">
-        <strong>💡 Pro tip:</strong> You can now start monitoring with:<br>
-        <code style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">python check_availability.py monitor</code>
-    </p>
+<div class="warning-box" style="margin-top: 24px;">
+    <strong>Next step:</strong> Start monitoring with
+    <code style="font-family: 'Courier New', monospace; font-size: 12px; background-color: #fef9c3; padding: 1px 5px; border-radius: 3px;">python check_availability.py monitor</code>
 </div>
 {% endblock %}

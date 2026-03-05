@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:apps.apple.com)",
+      "WebFetch(domain:www.matchi.se)"
+    ]
+  }
+}
