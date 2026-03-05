@@ -1,10 +1,19 @@
 import os
+import sys
 import smtplib
 import datetime
 from pathlib import Path
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Dict, Any, Optional, Tuple
+
+# Ensure stdout/stderr handle Unicode (e.g. emoji) on Windows
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+_MODULE_DIR = Path(__file__).parent
 
 try:
     from dotenv import load_dotenv
@@ -46,15 +55,14 @@ def _get_court_type(court_name: str) -> str:
         return "standard"
 
 
+
 def _get_template_environment() -> Optional[Environment]:
     """Get Jinja2 environment for template rendering."""
     if not JINJA2_AVAILABLE:
         return None
     
     try:
-        # Get templates directory relative to this file
-        current_dir = Path(__file__).parent
-        templates_dir = current_dir / "email_templates"
+        templates_dir = _MODULE_DIR / "email_templates"
         
         if not templates_dir.exists():
             return None
@@ -84,7 +92,7 @@ def _render_template(template_name: str, **context) -> Tuple[str, str]:
         
         # Add common context
         context.update({
-            'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         })
         
         html_content = template.render(**context)
