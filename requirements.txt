@@ -3,5 +3,6 @@ beautifulsoup4>=4.12.2
 arrow>=1.2.3
 tabulate>=0.9.0
 rich>=13.7.0
-win10toast>=0.9; sys_platform == 'win32'
+win10toast>=0.9; sys_platform == 'win32' #fixes deployment error
 python-dotenv>=1.0.1
+jinja2>=3.1.0

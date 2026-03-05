@@ -3,6 +3,9 @@
 
 import argparse
 import datetime
+import os
+import csv
+import random
 import subprocess
 import time
 import platform
@@ -15,14 +18,22 @@ from rich.text import Text
 from rich import box
 
 from facilities import facilities
-from email_notifications import send_email_notification as send_email
+from email_notifications import (
+    send_email_notification as send_email,
+    send_new_courts_notification,
+    send_test_email
+)
 
 # Initialize rich console
 console = Console()
 
 
-def send_notification(title, message, also_email: bool = False):
-    """Send a visual alert popup (Windows/macOS). Optionally send email."""
+def send_notification(title, message, also_email: bool = False, email_body: str | None = None):
+    """Send a visual alert popup (Windows/macOS). Optionally send email.
+
+    If also_email is True and email_body is provided, the email will use email_body;
+    otherwise the same message text is used.
+    """
     try:
         system = platform.system()
 
@@ -53,7 +64,7 @@ def send_notification(title, message, also_email: bool = False):
         # Optionally send email (best-effort)
         if also_email:
             try:
-                send_email(subject=title, body=message)
+                send_email(subject=title, body=(email_body or message))
             except Exception:
                 pass
 
@@ -413,6 +424,135 @@ def get_changes_summary(
     return changes
 
 
+def _build_schedule_url(facility_id: int, date_obj: datetime.date) -> str:
+    """Build a direct schedule link for a facility and date (tennis)."""
+    date_str = date_obj.strftime("%Y-%m-%d")
+    return (
+        f"https://www.matchi.se/book/schedule?facilityId={facility_id}"
+        f"&date={date_str}&sport=1"
+    )
+
+
+def _build_new_courts_email_data(
+    current_slots,
+    previous_slots,
+    dates: list[datetime.date],
+) -> dict[str, dict[datetime.date, dict[str, list[str]]]]:
+    """Transform slot data into format needed for new email system.
+    
+    Returns:
+        Dict with structure: facility_key -> date -> time_slot -> [court_names]
+        Only includes NEW courts that weren't in previous_slots.
+        Only includes dates from today onwards (filters out past dates).
+    """
+    new_courts_data = {}
+    today = datetime.date.today()
+    
+    for facility_key in facilities.keys():
+        facility_new_courts = {}
+        
+        for date_obj in dates:
+            # Skip past dates - only include today and future dates in emails
+            if date_obj < today:
+                continue
+                
+            new_courts, _removed = get_slot_changes(
+                current_slots, previous_slots, facility_key, date_obj
+            )
+            
+            if not new_courts:
+                continue
+                
+            # Group new courts by time slot
+            time_to_courts = {}
+            for time_slot, court in sorted(new_courts):
+                time_to_courts.setdefault(time_slot, []).append(court)
+            
+            if time_to_courts:
+                facility_new_courts[date_obj] = time_to_courts
+        
+        if facility_new_courts:
+            new_courts_data[facility_key] = facility_new_courts
+    
+    return new_courts_data
+
+
+def _build_new_slots_email_body(
+    current_slots,
+    previous_slots,
+    dates: list[datetime.date],
+) -> str:
+    """Create a detailed email body listing new courts by facility/date with links.
+    
+    Note: This function is kept for backward compatibility but now creates
+    a simple plain text version. The new HTML templates are handled by
+    the enhanced email_notifications module.
+    Only includes dates from today onwards (filters out past dates).
+    """
+    lines: list[str] = []
+    lines.append("New tennis courts are available:\n")
+    today = datetime.date.today()
+
+    for facility_key in facilities.keys():
+        facility_display = facility_key.capitalize()
+        facility_id = facilities[facility_key]
+
+        for date_obj in dates:
+            # Skip past dates - only include today and future dates in emails
+            if date_obj < today:
+                continue
+                
+            new_courts, _removed = get_slot_changes(
+                current_slots, previous_slots, facility_key, date_obj
+            )
+            if not new_courts:
+                continue
+
+            # Group new courts by time slot
+            time_to_courts: dict[str, list[str]] = {}
+            for time_slot, court in sorted(new_courts):
+                time_to_courts.setdefault(time_slot, []).append(court)
+
+            date_str = date_obj.strftime("%Y-%m-%d")
+            lines.append(f"{facility_display} — {date_str}")
+            for time_slot, courts in time_to_courts.items():
+                courts_csv = ", ".join(courts)
+                lines.append(f"  - {time_slot}: {courts_csv}")
+
+            link = _build_schedule_url(facility_id, date_obj)
+            lines.append(f"  Link: {link}\n")
+
+    # Append a random quote if available
+    quote = _get_random_quote()
+    if quote:
+        lines.append("\nQuote: " + quote)
+
+    return "\n".join(lines).strip()
+
+
+def _get_random_quote() -> str | None:
+    """Pick a random quote from quotes.csv if present."""
+    try:
+        base_dir = os.path.dirname(__file__)
+        path = os.path.join(base_dir, "quotes.csv")
+        if not os.path.isfile(path):
+            return None
+        quotes: list[str] = []
+        with open(path, "r", encoding="utf-8") as fh:
+            reader = csv.reader(fh)
+            for row in reader:
+                if not row:
+                    continue
+                # Support either [index, quote] or [quote]
+                text = row[1].strip() if len(row) >= 2 else row[0].strip()
+                if text:
+                    quotes.append(text)
+        if not quotes:
+            return None
+        return random.choice(quotes)
+    except Exception:
+        return None
+
 def show_legend(
     dates: list[datetime.date],
     between: tuple[datetime.time, datetime.time] | None = None,
@@ -526,27 +666,52 @@ def test_notifications():
 def test_email():
     """Send a test email using SMTP configuration from environment variables."""
     console.print("\n📧 Sending test email...", style="bold blue")
-    subject = "📧 Email Test: Matchi Availability Bot"
-    body = (
-        "If you received this message, your SMTP configuration works.\n\n"
-        "This is an automated test message from Matchi Availability Bot."
-    )
+    
+    # Get a random quote
+    quote = _get_random_quote()
+    
     try:
-        ok = send_email(subject=subject, body=body)
+        # Try the new enhanced email first
+        ok = send_test_email(quote)
         if ok:
             console.print("✅ Test email sent successfully.", style="bold green")
+            console.print("📧 Check your inbox for a beautifully formatted HTML email!", style="green")
         else:
             console.print(
                 "❌ Test email did not send. Check EMAIL_* and SMTP_* env vars.",
                 style="bold red",
             )
     except Exception as exc:
-        console.print(f"❌ Error sending test email: {exc}", style="bold red")
+        console.print(f"❌ Error sending enhanced test email: {exc}", style="bold red")
+        console.print("🔄 Trying fallback email format...", style="yellow")
+        
+        # Fallback to simple email
+        subject = "📧 Email Test: Matchi Availability Bot"
+        body_lines = [
+            "If you received this message, your SMTP configuration works.",
+            "",
+            "This is an automated test message from Matchi Availability Bot.",
+        ]
+        if quote:
+            body_lines.extend(["", f"Quote: {quote}"])
+        body = "\n".join(body_lines)
+        try:
+            ok = send_email(subject=subject, body=body)
+            if ok:
+                console.print("✅ Fallback test email sent successfully.", style="bold green")
+            else:
+                console.print(
+                    "❌ Test email did not send. Check EMAIL_* and SMTP_* env vars.",
+                    style="bold red",
+                )
+        except Exception as exc2:
+            console.print(f"❌ Error sending fallback test email: {exc2}", style="bold red")
 
 
 def run_monitor(
     dates: list[datetime.date],
     between: tuple[datetime.time, datetime.time] | None = None,
+    interval_seconds: int = 300,
 ):
     """Run the main court availability monitoring loop."""
     # Initialize previous state
@@ -578,11 +743,41 @@ def run_monitor(
                     if len(new_changes) > 3:
                         summary += f" and {len(new_changes) - 3} more..."
 
+                    # Prepare data for enhanced email notification
+                    new_courts_data = _build_new_courts_email_data(
+                        current_slots=current_slots,
+                        previous_slots=previous_slots,
+                        dates=dates,
+                    )
+                    
+                    # Get a random quote
+                    quote = _get_random_quote()
+                    
+                    # Send desktop notification
                     send_notification(
                         title="🎾 New Tennis Courts Available!",
                         message=summary,
-                        also_email=True,
+                        also_email=False,  # We'll handle email separately with better formatting
                     )
+                    
+                    # Send enhanced HTML email notification
+                    try:
+                        if new_courts_data:  # Only send if we have new courts
+                            send_new_courts_notification(new_courts_data, quote)
+                    except Exception as e:
+                        # Fallback to old email system if new one fails
+                        print(f"[EMAIL] Enhanced email failed, using fallback: {e}")
+                        email_body = _build_new_slots_email_body(
+                            current_slots=current_slots,
+                            previous_slots=previous_slots,
+                            dates=dates,
+                        )
+                        send_notification(
+                            title="🎾 New Tennis Courts Available!",
+                            message=summary,
+                            also_email=True,
+                            email_body=email_body,
+                        )
 
                 console.print("\n🔔 Changes detected!", style="bold green")
                 if changes:
@@ -604,14 +799,25 @@ def run_monitor(
             # Update previous state
             previous_slots = current_slots.copy()
 
+            # Normalize interval
+            if interval_seconds <= 0:
+                interval_seconds = 300
+
             next_check_time = (
-                datetime.datetime.now() + datetime.timedelta(minutes=5)
+                datetime.datetime.now() + datetime.timedelta(seconds=interval_seconds)
             ).strftime("%H:%M:%S")
+
+            if interval_seconds % 60 == 0:
+                mins = interval_seconds // 60
+                interval_label = f"{mins} minute{'s' if mins != 1 else ''}"
+            else:
+                interval_label = f"{interval_seconds} seconds"
+
             console.print(
-                f"\n⏰ Next check in 5 minutes... (at {next_check_time})",
+                f"\n⏰ Next check in {interval_label}... (at {next_check_time})",
                 style="dim blue",
             )
-            time.sleep(300)  # Sleep for 5 minutes
+            time.sleep(interval_seconds)
 
         except KeyboardInterrupt:
             console.print(
@@ -707,6 +913,16 @@ For more information, visit: https://github.com/your-username/tennis-bot
             "Formats: HH-HH or HH:MM-HH:MM (e.g., 17-22 or 17:30-22:00)."
         ),
     )
+    monitor_parser.add_argument(
+        "--interval-seconds",
+        type=int,
+        default=300,
+        metavar="SECONDS",
+        help=(
+            "How often to re-check availability in seconds. "
+            "Default: 300 (5 minutes)"
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -741,7 +957,8 @@ For more information, visit: https://github.com/your-username/tennis-bot
             except argparse.ArgumentTypeError as exc:
                 raise SystemExit(str(exc)) from exc
 
-        run_monitor(dates, between)
+        interval_seconds = args.interval_seconds
+        run_monitor(dates, between, interval_seconds)
     elif args.command == "test-notifications":
         test_notifications()
     elif args.command == "test-email":

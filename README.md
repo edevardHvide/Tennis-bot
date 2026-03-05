@@ -52,13 +52,13 @@ uv pip install -r requirements.txt
 
 ### Run the monitor
 ```powershell
-python check_availability.py monitor --between 17-22 --days-ahead 2
+python check_availability.py monitor --between 17-22 --days-ahead 2 --interval-seconds 300
 ```
 
 Examples:
 ```powershell
-# Only today, 17:00–22:00
-python check_availability.py monitor --days-ahead 0 --between 17-22
+# Only today, 17:00–22:00, recheck every 2 minutes
+python check_availability.py monitor --days-ahead 0 --between 17-22 --interval-seconds 120
 
 # Specific dates
 python check_availability.py monitor --dates 2025-08-20,2025-08-21
