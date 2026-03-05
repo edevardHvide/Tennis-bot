@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}New Tennis Courts Available — Matchi{% endblock %}
+
+{% block header_title %}New Courts Available{% endblock %}
+{% block header_subtitle %}
+    {{ total_new_courts }} new court{{ 's' if total_new_courts != 1 else '' }}
+    across {{ facilities|length }} facilit{{ 'ies' if facilities|length != 1 else 'y' }}
+{% endblock %}
+
+{% block content %}
+<p class="content-lead">
+    We found <strong>{{ total_new_courts }} new court{{ 's' if total_new_courts != 1 else '' }}</strong>
+    available for booking at
+    <strong>{{ facilities|length }} facilit{{ 'ies' if facilities|length != 1 else 'y' }}</strong>.
+    The slots below opened recently &mdash; book early to secure your court.
+</p>
+
+{% for facility_data in facilities %}
+<div class="facility-section">
+    <div class="facility-header">
+        <div class="facility-title">{{ facility_data.name }}</div>
+    </div>
+
+    <div class="facility-body">
+        {% for date_info in facility_data.dates %}
+        <div class="date-group">
+            <div class="date-label">{{ date_info.display_name }}</div>
+
+            {% for time_slot in date_info.time_slots %}
+            <div class="slot-row">
+                <div class="slot-time">{{ time_slot.time }}</div>
+                <div class="slot-courts">
+                    {% for court in time_slot.courts %}
+                    <span class="court-tag {{ court.type }}{% if court.is_new %} new{% endif %}">
+                        {{ court.name }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+
+        <div class="cta-wrap">
+            <a href="{{ facility_data.dates[0].booking_url }}" class="cta-button">
+                Book at {{ facility_data.name }}
+            </a>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<div class="info-box">
+    <strong>Heads up:</strong> Court availability can change quickly. Open Matchi directly to confirm availability before booking.
+</div>
+
+{% if quote %}
+<div class="quote-block">
+    <p>{{ quote }}</p>
+</div>
+{% endif %}
+
+<p style="font-size: 13px; color: #94a3b8; margin-top: 16px;">
+    You will only receive alerts when new courts become available. No alerts are sent for previously seen courts.
+</p>
+{% endblock %}

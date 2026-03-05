@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Email Configuration Test — Matchi Bot{% endblock %}
+
+{% block header_title %}Email Configuration Verified{% endblock %}
+{% block header_subtitle %}Your SMTP setup is working correctly{% endblock %}
+
+{% block content %}
+<p class="content-lead">
+    This is a confirmation that your email configuration is set up correctly and the bot is ready to send court availability notifications.
+</p>
+
+<div class="section-heading">Configuration Status</div>
+
+<table class="stats-table" role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr>
+        <td>SMTP connection</td>
+        <td>OK</td>
+    </tr>
+    <tr>
+        <td>Authentication</td>
+        <td>OK</td>
+    </tr>
+    <tr>
+        <td>Email delivery</td>
+        <td>OK</td>
+    </tr>
+    <tr>
+        <td>HTML templates</td>
+        <td>OK</td>
+    </tr>
+</table>
+
+<p style="font-size: 14px; color: #475569; margin-bottom: 24px;">
+    The monitoring system will now send you a notification each time new courts become available on Matchi.se.
+    No action is required — monitoring starts automatically on the next run.
+</p>
+
+<div class="cta-wrap" style="padding: 0 0 8px;">
+    <a href="https://www.matchi.se/book/schedule" class="cta-button">Open Matchi.se</a>
+</div>
+
+{% if quote %}
+<div class="quote-block" style="margin-top: 28px;">
+    <p>{{ quote }}</p>
+</div>
+{% endif %}
+
+<div class="warning-box" style="margin-top: 24px;">
+    <strong>Next step:</strong> Start monitoring with
+    <code style="font-family: 'Courier New', monospace; font-size: 12px; background-color: #fef9c3; padding: 1px 5px; border-radius: 3px;">python check_availability.py monitor</code>
+</div>
+{% endblock %}
