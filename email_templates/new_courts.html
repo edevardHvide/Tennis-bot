@@ -18,19 +18,19 @@
 
 {% for facility_data in facilities %}
 <div class="facility-section">
-    <div class="facility-header">
-        <div class="facility-title">{{ facility_data.name }}</div>
+    <div class="facility-header" style="background:#f1f5f9 !important; padding:14px 20px; border-bottom:1px solid #e2e8f0;">
+        <div class="facility-title" style="font-size:14px; font-weight:700; color:#0f172a !important;">{{ facility_data.name }}</div>
     </div>
 
-    <div class="facility-body">
+    <div class="facility-body" style="background:#ffffff !important;">
         {% for date_info in facility_data.dates %}
         <div class="date-group">
-            <div class="date-label">{{ date_info.display_name }}</div>
+            <div class="date-label" style="color:#94a3b8 !important;">{{ date_info.display_name }}</div>
 
             {% for time_slot in date_info.time_slots %}
             <a href="{{ time_slot.url }}" style="text-decoration:none; display:block; color:inherit;">
             <div class="slot-row" style="cursor:pointer;">
-                <div class="slot-time" style="color:#0f172a;">{{ time_slot.time }}</div>
+                <div class="slot-time" style="color:#0f172a !important; background:#f1f5f9 !important;">{{ time_slot.time }}</div>
                 <div class="slot-courts">
                     {% for court in time_slot.courts %}
                     <span class="court-tag {{ court.type }}{% if court.is_new %} new{% endif %}">

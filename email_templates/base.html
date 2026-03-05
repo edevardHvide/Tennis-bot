@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
     <title>{% block title %}Tennis Court Notification{% endblock %}</title>
     <!--[if mso]>
     <noscript>
@@ -15,6 +17,8 @@
     </noscript>
     <![endif]-->
     <style>
+        :root { color-scheme: light !important; }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
@@ -55,7 +59,7 @@
         .email-container {
             max-width: 600px;
             margin: 0 auto;
-            background-color: #ffffff;
+            background-color: #ffffff !important;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 12px 48px rgba(5,2,0,0.45), 0 3px 10px rgba(5,2,0,0.2);
@@ -101,18 +105,20 @@
         /* Content */
         .content {
             padding: 36px 44px 40px;
+            background-color: #ffffff !important;
+            color: #1e293b !important;
         }
 
         .content-lead {
             font-size: 15px;
-            color: #475569;
+            color: #475569 !important;
             margin-bottom: 28px;
             padding-bottom: 24px;
             border-bottom: 1px solid #f1f5f9;
             line-height: 1.7;
         }
 
-        .content-lead strong { color: #0f172a; font-weight: 700; }
+        .content-lead strong { color: #0f172a !important; font-weight: 700; }
 
         /* Facility card */
         .facility-section {
@@ -124,7 +130,7 @@
         }
 
         .facility-header {
-            background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+            background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%) !important;
             padding: 14px 20px;
             border-bottom: 1px solid #e2e8f0;
         }
@@ -132,11 +138,11 @@
         .facility-title {
             font-size: 14px;
             font-weight: 700;
-            color: #0f172a;
+            color: #0f172a !important;
             letter-spacing: -0.01em;
         }
 
-        .facility-body { padding: 4px 20px 18px; }
+        .facility-body { padding: 4px 20px 18px; background-color: #ffffff !important; }
 
         /* Date group */
         .date-group { margin-top: 16px; }
@@ -144,7 +150,7 @@
         .date-label {
             font-size: 11px;
             font-weight: 700;
-            color: #94a3b8;
+            color: #94a3b8 !important;
             letter-spacing: 0.08em;
             text-transform: uppercase;
             margin-bottom: 8px;
@@ -165,8 +171,8 @@
         .slot-time {
             font-size: 12px;
             font-weight: 700;
-            color: #334155;
-            background: linear-gradient(135deg, #f1f5f9, #e8edf5);
+            color: #334155 !important;
+            background: linear-gradient(135deg, #f1f5f9, #e8edf5) !important;
             border: 1px solid #dde3ec;
             border-radius: 6px;
             padding: 5px 10px;
@@ -232,7 +238,7 @@
 
         .cta-button {
             display: inline-block;
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+            background: linear-gradient(135deg, #00c96b 0%, #059652 100%) !important;
             color: #ffffff !important;
             text-decoration: none !important;
             font-size: 13px;
@@ -240,11 +246,11 @@
             letter-spacing: 0.03em;
             padding: 12px 28px;
             border-radius: 8px;
-            box-shadow: 0 4px 14px rgba(15,23,42,0.3);
+            box-shadow: 0 4px 14px rgba(0,150,82,0.4);
         }
 
         .cta-button:hover {
-            background: linear-gradient(135deg, #1e293b 0%, #243d6a 100%);
+            background: linear-gradient(135deg, #00b85f 0%, #047a43 100%) !important;
             text-decoration: none !important;
         }
 
@@ -321,17 +327,17 @@
 
         /* Footer */
         .footer {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
             border-top: 1px solid #e2e8f0;
             padding: 24px 44px;
             font-size: 12px;
-            color: #94a3b8;
+            color: #94a3b8 !important;
             line-height: 1.8;
             text-align: center;
         }
 
-        .footer a { color: #64748b; }
-        .footer a:hover { color: #334155; }
+        .footer a { color: #64748b !important; }
+        .footer a:hover { color: #334155 !important; }
 
         /* Responsive */
         @media only screen and (max-width: 640px) {
@@ -350,7 +356,7 @@
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
         <tr>
             <td class="email-wrapper">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" align="center" class="email-container" style="max-width:600px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" align="center" bgcolor="#ffffff" class="email-container" style="max-width:600px; background-color:#ffffff !important;">
 
                     <!-- Header -->
                     <tr>
@@ -363,14 +369,14 @@
 
                     <!-- Body -->
                     <tr>
-                        <td class="content">
+                        <td class="content" bgcolor="#ffffff" style="background-color:#ffffff !important; padding:36px 44px 40px; color:#1e293b !important;">
                             {% block content %}{% endblock %}
                         </td>
                     </tr>
 
                     <!-- Footer -->
                     <tr>
-                        <td class="footer">
+                        <td class="footer" bgcolor="#f1f5f9" style="background-color:#f1f5f9 !important;">
                             <p>
                                 <strong style="color:#475569;">Matchi Availability Bot</strong><br>
                                 Monitoring tennis courts so you don't have to &mdash; {{ timestamp }}<br>
