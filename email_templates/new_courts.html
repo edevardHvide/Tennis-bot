@@ -42,11 +42,13 @@
         </div>
         {% endfor %}
 
+        {% if facility_data.dates %}
         <div class="cta-wrap">
             <a href="{{ facility_data.dates[0].booking_url }}" class="cta-button">
                 Book at {{ facility_data.name }}
             </a>
         </div>
+        {% endif %}
     </div>
 </div>
 {% endfor %}

@@ -275,7 +275,7 @@ def prepare_test_email(quote: Optional[str] = None) -> Tuple[str, str, str]:
     """
     subject = "📧 Email Test: Matchi Tennis Bot Configuration"
     
-    context = {'quote': quote}
+    context = {'quote': quote, 'matchi_url': 'https://www.matchi.se/book/schedule'}
     html_body, plain_text_body = _render_template('test_email.html', **context)
     
     return subject, html_body, plain_text_body
