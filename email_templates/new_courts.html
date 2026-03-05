@@ -28,8 +28,9 @@
             <div class="date-label">{{ date_info.display_name }}</div>
 
             {% for time_slot in date_info.time_slots %}
-            <div class="slot-row">
-                <div class="slot-time">{{ time_slot.time }}</div>
+            <a href="{{ time_slot.url }}" style="text-decoration:none; display:block; color:inherit;">
+            <div class="slot-row" style="cursor:pointer;">
+                <div class="slot-time" style="color:#0f172a;">{{ time_slot.time }}</div>
                 <div class="slot-courts">
                     {% for court in time_slot.courts %}
                     <span class="court-tag {{ court.type }}{% if court.is_new %} new{% endif %}">
@@ -38,18 +39,16 @@
                     {% endfor %}
                 </div>
             </div>
+            </a>
             {% endfor %}
         </div>
         {% endfor %}
 
         {% if facility_data.dates %}
         <div class="cta-wrap">
-            <a href="{{ facility_data.dates[0].booking_url }}" class="cta-button">
+            <a href="{{ facility_data.dates[0].web_url }}" class="cta-button">
                 Book at {{ facility_data.name }}
             </a>
-            <p style="margin-top: 8px; font-size: 12px; color: #94a3b8; text-align: center;">
-                <a href="{{ facility_data.dates[0].web_url }}" style="color: #94a3b8;">Open in browser instead</a>
-            </p>
         </div>
         {% endif %}
     </div>

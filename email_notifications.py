@@ -230,7 +230,7 @@ def prepare_new_courts_email(
             for time_slot, courts in time_slots.items():
                 if not courts:
                     continue
-                    
+
                 court_items = []
                 for court_name in courts:
                     court_items.append({
@@ -239,9 +239,10 @@ def prepare_new_courts_email(
                         'is_new': True  # All courts in this context are new
                     })
                     total_new_courts += 1
-                
+
                 date_info['time_slots'].append({
                     'time': time_slot,
+                    'url': _build_booking_url(facility_key, date_obj, time_slot),
                     'courts': court_items
                 })
             
@@ -296,13 +297,8 @@ def _format_date_display(date_obj: datetime.date) -> str:
         return f"{date_obj.strftime('%A, %Y-%m-%d')}"
 
 
-def _build_booking_url(facility_key: str, date_obj: datetime.date) -> str:
-    """Build matchi:// deep link to open the Matchi app."""
-    return "matchi://"
-
-
-def _build_web_booking_url(facility_key: str, date_obj: datetime.date) -> str:
-    """Build https:// web booking URL for facility and date."""
+def _build_booking_url(facility_key: str, date_obj: datetime.date, time_slot: Optional[str] = None) -> str:
+    """Build https:// booking URL for facility, date, and optional time slot."""
     try:
         from facilities import facilities
         facility_id = facilities.get(facility_key.lower())
@@ -310,12 +306,19 @@ def _build_web_booking_url(facility_key: str, date_obj: datetime.date) -> str:
             return "https://www.matchi.se/book/schedule"
 
         date_str = date_obj.strftime("%Y-%m-%d")
-        return (
-            f"https://www.matchi.se/book/schedule?facilityId={facility_id}"
-            f"&date={date_str}&sport=1"
-        )
+        url = f"https://www.matchi.se/book/schedule?facilityId={facility_id}&date={date_str}&sport=1"
+        if time_slot:
+            # Extract start time from e.g. "10:00-11:00" or "10:00"
+            start_time = time_slot.split("-")[0].strip()
+            url += f"&startTime={start_time}"
+        return url
     except ImportError:
         return "https://www.matchi.se/book/schedule"
+
+
+def _build_web_booking_url(facility_key: str, date_obj: datetime.date) -> str:
+    """Build https:// web booking URL for facility and date."""
+    return _build_booking_url(facility_key, date_obj)
 
 
 def _send_via_brevo_api(
