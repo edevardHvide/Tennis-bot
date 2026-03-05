@@ -15,15 +15,15 @@
     </noscript>
     <![endif]-->
     <style>
-        /* Reset */
-        * { margin: 0; padding: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             font-size: 15px;
             line-height: 1.6;
             color: #1e293b;
-            background-color: #f1f5f9;
+            background-color: #e8f0f7;
+            background-image: linear-gradient(160deg, #dbeafe 0%, #e8f0f7 40%, #dcfce7 100%);
             margin: 0;
             padding: 0;
             width: 100% !important;
@@ -37,79 +37,67 @@
             mso-table-rspace: 0pt;
         }
 
-        img {
-            border: 0;
-            outline: none;
-            text-decoration: none;
-            -ms-interpolation-mode: bicubic;
-            max-width: 100%;
-            height: auto;
-        }
+        img { border: 0; outline: none; text-decoration: none; max-width: 100%; height: auto; }
 
         a { color: #0ea5e9; text-decoration: none; }
         a:hover { text-decoration: underline; }
 
-        /* Wrapper */
         .email-wrapper {
             width: 100%;
-            background-color: #f1f5f9;
-            padding: 32px 0;
+            background-color: #e8f0f7;
+            background-image: linear-gradient(160deg, #dbeafe 0%, #e8f0f7 40%, #dcfce7 100%);
+            padding: 40px 0 48px;
         }
 
-        /* Container */
         .email-container {
             max-width: 600px;
             margin: 0 auto;
             background-color: #ffffff;
-            border-radius: 8px;
+            border-radius: 16px;
             overflow: hidden;
-            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 24px rgba(15,23,42,0.10), 0 1px 4px rgba(15,23,42,0.06);
+            border: 1px solid rgba(226,232,240,0.6);
         }
 
         /* Header */
         .header {
-            background-color: #0f172a;
-            padding: 36px 40px 32px;
+            background-color: #050d1f;
+            background-image: linear-gradient(135deg, #050d1f 0%, #0c1e3e 55%, #0a2a1a 100%);
+            padding: 40px 44px 36px;
         }
 
-        .header-label {
+        .header-badge {
             display: inline-block;
-            background-color: #10b981;
+            background: linear-gradient(135deg, #00c96b, #10b981);
             color: #ffffff;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
             text-transform: uppercase;
-            padding: 4px 10px;
-            border-radius: 4px;
-            margin-bottom: 14px;
+            padding: 5px 14px;
+            border-radius: 100px;
+            margin-bottom: 18px;
+            box-shadow: 0 0 0 1px rgba(0,201,107,0.3), 0 4px 12px rgba(0,201,107,0.25);
         }
 
         .header h1 {
-            font-size: 26px;
-            font-weight: 700;
+            font-size: 28px;
+            font-weight: 800;
             color: #ffffff;
-            letter-spacing: -0.02em;
-            line-height: 1.25;
-            margin-bottom: 6px;
+            letter-spacing: -0.03em;
+            line-height: 1.2;
+            margin-bottom: 8px;
         }
 
         .header .subtitle {
             font-size: 14px;
-            color: #94a3b8;
-            font-weight: 400;
-        }
-
-        /* Divider */
-        .divider {
-            height: 1px;
-            background-color: #e2e8f0;
-            margin: 0;
+            color: #64c8a0;
+            font-weight: 500;
         }
 
         /* Content */
         .content {
-            padding: 36px 40px;
+            padding: 36px 44px 40px;
         }
 
         .content-lead {
@@ -118,74 +106,70 @@
             margin-bottom: 28px;
             padding-bottom: 24px;
             border-bottom: 1px solid #f1f5f9;
+            line-height: 1.7;
         }
 
-        .content-lead strong {
-            color: #0f172a;
-        }
+        .content-lead strong { color: #0f172a; font-weight: 700; }
 
-        /* Section */
+        /* Facility card */
         .facility-section {
-            margin-bottom: 28px;
+            margin-bottom: 20px;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            border-radius: 12px;
             overflow: hidden;
+            box-shadow: 0 1px 6px rgba(15,23,42,0.05);
         }
 
         .facility-header {
-            background-color: #f8fafc;
+            background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
             padding: 14px 20px;
             border-bottom: 1px solid #e2e8f0;
         }
 
         .facility-title {
-            font-size: 15px;
-            font-weight: 600;
+            font-size: 14px;
+            font-weight: 700;
             color: #0f172a;
             letter-spacing: -0.01em;
         }
 
-        .facility-body {
-            padding: 0 20px 16px;
-        }
+        .facility-body { padding: 4px 20px 18px; }
 
         /* Date group */
-        .date-group {
-            margin-top: 16px;
-        }
+        .date-group { margin-top: 16px; }
 
         .date-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #64748b;
-            letter-spacing: 0.06em;
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
-            margin-bottom: 10px;
-        }
-
-        /* Time slot row */
-        .slot-row {
-            display: flex;
-            align-items: center;
-            padding: 10px 0;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
             border-bottom: 1px solid #f1f5f9;
         }
 
-        .slot-row:last-child {
-            border-bottom: none;
+        /* Slot row */
+        .slot-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f8fafc;
         }
 
+        .slot-row:last-child { border-bottom: none; }
+
         .slot-time {
-            font-size: 13px;
-            font-weight: 600;
-            color: #0f172a;
-            background-color: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #334155;
+            background: linear-gradient(135deg, #f1f5f9, #e8edf5);
+            border: 1px solid #dde3ec;
+            border-radius: 6px;
+            padding: 5px 10px;
             min-width: 88px;
             text-align: center;
-            margin-right: 14px;
+            margin-right: 12px;
             white-space: nowrap;
             flex-shrink: 0;
         }
@@ -196,94 +180,99 @@
             flex: 1;
             font-size: 13px;
             color: #334155;
-            line-height: 1.8;
+            line-height: 2;
         }
 
         /* Court tags */
         .court-tag {
             display: inline-block;
-            font-size: 12px;
-            font-weight: 500;
+            font-size: 11px;
+            font-weight: 600;
             padding: 3px 9px;
-            border-radius: 4px;
+            border-radius: 6px;
             margin: 2px 3px 2px 0;
             border: 1px solid transparent;
+            letter-spacing: 0.01em;
         }
 
         .court-tag.new {
-            background-color: #d1fae5;
-            color: #065f46;
-            border-color: #6ee7b7;
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            color: #14532d;
+            border-color: #86efac;
+            box-shadow: 0 0 0 2px rgba(134,239,172,0.3);
+            font-weight: 700;
         }
 
         .court-tag.clay {
-            background-color: #ffedd5;
+            background: linear-gradient(135deg, #ffedd5, #fed7aa);
             color: #7c2d12;
-            border-color: #fdba74;
+            border-color: #fb923c;
         }
 
         .court-tag.hard {
-            background-color: #dbeafe;
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
             color: #1e3a8a;
-            border-color: #93c5fd;
+            border-color: #60a5fa;
         }
 
         .court-tag.standard {
-            background-color: #f1f5f9;
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
             color: #334155;
             border-color: #cbd5e1;
         }
 
-        /* CTA Button */
+        /* CTA */
         .cta-wrap {
-            padding: 16px 20px 0;
+            padding: 18px 20px 4px;
+            text-align: center;
         }
 
         .cta-button {
             display: inline-block;
-            background-color: #0f172a;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
             color: #ffffff !important;
-            text-decoration: none;
+            text-decoration: none !important;
             font-size: 13px;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            padding: 10px 20px;
-            border-radius: 6px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            padding: 12px 28px;
+            border-radius: 8px;
+            box-shadow: 0 4px 14px rgba(15,23,42,0.3);
         }
 
         .cta-button:hover {
-            background-color: #1e293b;
-            text-decoration: none;
+            background: linear-gradient(135deg, #1e293b 0%, #243d6a 100%);
+            text-decoration: none !important;
         }
 
-        /* Alert / info box */
+        /* Info / warning boxes */
         .info-box {
-            background-color: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-radius: 6px;
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            border: 1px solid #86efac;
+            border-radius: 10px;
             padding: 14px 18px;
             margin: 24px 0;
-            font-size: 14px;
+            font-size: 13px;
             color: #166534;
         }
 
         .warning-box {
-            background-color: #fefce8;
+            background: linear-gradient(135deg, #fefce8, #fef9c3);
             border: 1px solid #fde68a;
-            border-radius: 6px;
+            border-radius: 10px;
             padding: 14px 18px;
             margin: 24px 0;
-            font-size: 14px;
+            font-size: 13px;
             color: #713f12;
         }
 
         /* Quote */
         .quote-block {
-            border-left: 3px solid #10b981;
+            border-left: 3px solid #00c96b;
             padding: 12px 18px;
             margin: 24px 0;
-            background-color: #f8fafc;
-            border-radius: 0 6px 6px 0;
+            background: linear-gradient(90deg, #f0fdf4, #f8fafc);
+            border-radius: 0 8px 8px 0;
         }
 
         .quote-block p {
@@ -291,82 +280,66 @@
             color: #475569;
             font-style: italic;
             margin: 0;
-            line-height: 1.6;
-        }
-
-        /* Footer */
-        .footer {
-            background-color: #f8fafc;
-            border-top: 1px solid #e2e8f0;
-            padding: 24px 40px;
-            font-size: 12px;
-            color: #94a3b8;
             line-height: 1.7;
-        }
-
-        .footer a {
-            color: #64748b;
         }
 
         /* Stats table */
         .stats-table {
             width: 100%;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            border-radius: 10px;
             overflow: hidden;
             margin-bottom: 24px;
+            box-shadow: 0 1px 4px rgba(15,23,42,0.04);
         }
 
         .stats-table td {
-            padding: 12px 16px;
+            padding: 13px 18px;
             font-size: 14px;
             border-bottom: 1px solid #f1f5f9;
             color: #334155;
         }
 
-        .stats-table td:first-child {
-            color: #64748b;
-            width: 55%;
-        }
-
-        .stats-table td:last-child {
-            font-weight: 600;
-            color: #0f172a;
-            text-align: right;
-        }
-
-        .stats-table tr:last-child td {
-            border-bottom: none;
-        }
+        .stats-table tr:nth-child(even) td { background-color: #fafbfc; }
+        .stats-table td:first-child { color: #64748b; width: 55%; }
+        .stats-table td:last-child { font-weight: 700; color: #0f172a; text-align: right; }
+        .stats-table tr:last-child td { border-bottom: none; }
 
         /* Section heading */
         .section-heading {
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 0.06em;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
-            color: #64748b;
+            color: #94a3b8;
             margin-bottom: 14px;
             margin-top: 28px;
         }
 
+        /* Footer */
+        .footer {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border-top: 1px solid #e2e8f0;
+            padding: 24px 44px;
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.8;
+            text-align: center;
+        }
+
+        .footer a { color: #64748b; }
+        .footer a:hover { color: #334155; }
+
         /* Responsive */
         @media only screen and (max-width: 640px) {
             .email-wrapper { padding: 0; }
-
-            .email-container {
-                border-radius: 0;
-                border-left: none;
-                border-right: none;
-            }
-
-            .header { padding: 28px 24px; }
-            .content { padding: 28px 24px; }
+            .email-container { border-radius: 0; border-left: none; border-right: none; box-shadow: none; }
+            .header { padding: 30px 24px 26px; }
+            .content { padding: 28px 24px 32px; }
             .footer { padding: 20px 24px; }
             .cta-wrap { padding: 14px 0 0; }
-
             .slot-row { flex-direction: column; align-items: flex-start; }
-            .slot-time { margin-right: 0; margin-bottom: 8px; }
+            .slot-time { margin-right: 0; margin-bottom: 6px; }
         }
     </style>
 </head>
@@ -375,10 +348,11 @@
         <tr>
             <td class="email-wrapper">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" align="center" class="email-container" style="max-width:600px;">
+
                     <!-- Header -->
                     <tr>
                         <td class="header">
-                            <div class="header-label">Matchi Bot</div>
+                            <div class="header-badge">Matchi Bot</div>
                             <h1>{% block header_title %}Tennis Court Availability{% endblock %}</h1>
                             <div class="subtitle">{% block header_subtitle %}Matchi Availability Monitor{% endblock %}</div>
                         </td>
@@ -395,12 +369,13 @@
                     <tr>
                         <td class="footer">
                             <p>
-                                You are receiving this notification because you are monitoring tennis court availability on Matchi.se.<br>
-                                Sent by <a href="https://github.com/Joachimmorken/Matchi-availability-bot">Matchi Availability Bot</a>
-                                &mdash; {{ timestamp }}
+                                <strong style="color:#475569;">Matchi Availability Bot</strong><br>
+                                Monitoring tennis courts so you don't have to &mdash; {{ timestamp }}<br>
+                                <a href="https://github.com/Joachimmorken/Matchi-availability-bot">View on GitHub</a>
                             </p>
                         </td>
                     </tr>
+
                 </table>
             </td>
         </tr>

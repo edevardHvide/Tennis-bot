@@ -125,7 +125,7 @@ def _html_to_plain_text(html_content: str, **context) -> str:
                     courts = ", ".join([court['name'] for court in time_slot['courts']])
                     lines.append(f"  {time_slot['time']}: {courts}")
                 
-                lines.append(f"  🔗 Book: {date_info['booking_url']}")
+                lines.append(f"  🔗 Book: {date_info.get('web_url', date_info['booking_url'])}")
                 lines.append("")
     
     elif context.get('quote'):
@@ -164,7 +164,7 @@ def _create_fallback_content(**context) -> Tuple[str, str]:
                 for time_slot in date_info['time_slots']:
                     courts = ", ".join([court['name'] for court in time_slot['courts']])
                     content_lines.append(f"  {time_slot['time']}: {courts}")
-                content_lines.append(f"  🔗 {date_info['booking_url']}")
+                content_lines.append(f"  🔗 {date_info.get('web_url', date_info['booking_url'])}")
                 content_lines.append("")
     
     else:
@@ -200,7 +200,11 @@ def prepare_new_courts_email(
     today = datetime.date.today()
     
     for facility_key, dates_data in new_courts_data.items():
-        facility_name = facility_key.capitalize()
+        try:
+            from facilities import facility_display_names
+            facility_name = facility_display_names.get(facility_key.lower(), facility_key.capitalize())
+        except ImportError:
+            facility_name = facility_key.capitalize()
         facility_info = {
             'name': facility_name,
             'dates': []
@@ -215,11 +219,11 @@ def prepare_new_courts_email(
                 continue
                 
             date_display = _format_date_display(date_obj)
-            booking_url = _build_booking_url(facility_key, date_obj)
-            
+
             date_info = {
                 'display_name': date_display,
-                'booking_url': booking_url,
+                'booking_url': _build_booking_url(facility_key, date_obj),
+                'web_url': _build_web_booking_url(facility_key, date_obj),
                 'time_slots': []
             }
             
@@ -275,7 +279,7 @@ def prepare_test_email(quote: Optional[str] = None) -> Tuple[str, str, str]:
     """
     subject = "📧 Email Test: Matchi Tennis Bot Configuration"
     
-    context = {'quote': quote, 'matchi_url': 'https://www.matchi.se/book/schedule'}
+    context = {'quote': quote, 'matchi_url': 'matchi://book/schedule'}
     html_body, plain_text_body = _render_template('test_email.html', **context)
     
     return subject, html_body, plain_text_body
@@ -293,14 +297,18 @@ def _format_date_display(date_obj: datetime.date) -> str:
 
 
 def _build_booking_url(facility_key: str, date_obj: datetime.date) -> str:
-    """Build booking URL for facility and date."""
-    # Import here to avoid circular imports
+    """Build matchi:// deep link to open the Matchi app."""
+    return "matchi://"
+
+
+def _build_web_booking_url(facility_key: str, date_obj: datetime.date) -> str:
+    """Build https:// web booking URL for facility and date."""
     try:
         from facilities import facilities
         facility_id = facilities.get(facility_key.lower())
         if not facility_id:
             return "https://www.matchi.se/book/schedule"
-            
+
         date_str = date_obj.strftime("%Y-%m-%d")
         return (
             f"https://www.matchi.se/book/schedule?facilityId={facility_id}"
@@ -310,20 +318,66 @@ def _build_booking_url(facility_key: str, date_obj: datetime.date) -> str:
         return "https://www.matchi.se/book/schedule"
 
 
+def _send_via_brevo_api(
+    subject: str,
+    body: str,
+    html_body: Optional[str],
+    email_from: str,
+    recipients: list,
+    api_key: str,
+) -> bool:
+    """Send email via Brevo HTTP API (works when SMTP is blocked by firewall)."""
+    try:
+        import requests as _requests
+    except ImportError:
+        print("[EMAIL] requests library not available for Brevo API")
+        return False
+
+    # Parse optional display name from "Name<email>" or plain "email" format
+    import re as _re
+    _m = _re.match(r'^(.+?)\s*<([^>]+)>$', email_from)
+    if _m:
+        sender = {"name": _m.group(1).strip(), "email": _m.group(2).strip()}
+    else:
+        sender = {"email": email_from}
+
+    payload = {
+        "sender": sender,
+        "to": [{"email": addr} for addr in recipients],
+        "subject": subject,
+        "textContent": body,
+    }
+    if html_body:
+        payload["htmlContent"] = html_body
+
+    try:
+        resp = _requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={"api-key": api_key, "Content-Type": "application/json"},
+            json=payload,
+            timeout=15,
+        )
+        if resp.status_code in (200, 201):
+            print(f"[EMAIL] Sent via Brevo API: {subject}")
+            return True
+        else:
+            print(f"[EMAIL] Brevo API error {resp.status_code}: {resp.text}")
+            return False
+    except Exception as exc:
+        print(f"[EMAIL] Brevo API request failed: {exc}")
+        return False
+
+
 def send_email_notification(
-    subject: str, 
+    subject: str,
     body: str,
     html_body: Optional[str] = None
 ) -> bool:
-    """Send an email using SMTP configuration from environment variables.
-
-    Args:
-        subject: Email subject line
-        body: Plain text email body
-        html_body: Optional HTML email body for rich formatting
+    """Send an email using Brevo API or SMTP from environment variables.
 
     Expected environment variables:
       - EMAIL_ENABLED: enable/disable sending (true/false)
+      - BREVO_API_KEY: Brevo API key (preferred, works through firewalls)
       - SMTP_HOST, SMTP_PORT, SMTP_SSL (true/false)
       - SMTP_USER, SMTP_PASS
       - EMAIL_FROM, EMAIL_TO (comma-separated)
@@ -337,6 +391,24 @@ def send_email_notification(
         print("[EMAIL] Email notifications disabled")
         return False
 
+    email_from = os.getenv("EMAIL_FROM", "").strip()
+    email_to = os.getenv("EMAIL_TO", "").strip()
+
+    if not email_from or not email_to:
+        print("[EMAIL] Missing EMAIL_FROM or EMAIL_TO")
+        return False
+
+    recipients = [addr.strip() for addr in email_to.split(",") if addr.strip()]
+    if not recipients:
+        print("[EMAIL] No valid recipients found")
+        return False
+
+    # Try Brevo HTTP API first (bypasses SMTP firewall blocks)
+    brevo_api_key = os.getenv("BREVO_API_KEY", "").strip()
+    if brevo_api_key:
+        return _send_via_brevo_api(subject, body, html_body, email_from, recipients, brevo_api_key)
+
+    # Fall back to SMTP
     try:
         smtp_host = os.getenv("SMTP_HOST", "").strip()
         smtp_port_text = os.getenv("SMTP_PORT", "587").strip()
@@ -347,16 +419,9 @@ def send_email_notification(
         smtp_ssl = _is_truthy(os.getenv("SMTP_SSL", "false"))
         smtp_user = os.getenv("SMTP_USER", "").strip()
         smtp_pass = os.getenv("SMTP_PASS", "").strip()
-        email_from = os.getenv("EMAIL_FROM", "").strip()
-        email_to = os.getenv("EMAIL_TO", "").strip()
 
-        if not all([smtp_host, smtp_user, smtp_pass, email_from, email_to]):
+        if not all([smtp_host, smtp_user, smtp_pass]):
             print("[EMAIL] Missing SMTP configuration")
-            return False
-
-        recipients = [addr.strip() for addr in email_to.split(",") if addr.strip()]
-        if not recipients:
-            print("[EMAIL] No valid recipients found")
             return False
 
         # Create multipart message
@@ -364,17 +429,14 @@ def send_email_notification(
         message["From"] = email_from
         message["To"] = ", ".join(recipients)
         message["Subject"] = subject
-        
-        # Add plain text part
+
         text_part = MIMEText(body, "plain", "utf-8")
         message.attach(text_part)
-        
-        # Add HTML part if provided
+
         if html_body:
             html_part = MIMEText(html_body, "html", "utf-8")
             message.attach(html_part)
 
-        # Connect to SMTP server
         if smtp_ssl:
             server = smtplib.SMTP_SSL(smtp_host, smtp_port)
         else:
@@ -392,8 +454,8 @@ def send_email_notification(
 
         print(f"[EMAIL] Sent: {subject}")
         return True
-        
-    except Exception as exc:  # pragma: no cover
+
+    except Exception as exc:
         print(f"[EMAIL] Failed to send: {exc}")
         return False
 
