@@ -329,66 +329,16 @@ def _build_web_booking_url(facility_key: str, date_obj: datetime.date) -> str:
     return _build_booking_url(facility_key, date_obj)
 
 
-def _send_via_brevo_api(
-    subject: str,
-    body: str,
-    html_body: Optional[str],
-    email_from: str,
-    recipients: list,
-    api_key: str,
-) -> bool:
-    """Send email via Brevo HTTP API (works when SMTP is blocked by firewall)."""
-    try:
-        import requests as _requests
-    except ImportError:
-        print("[EMAIL] requests library not available for Brevo API")
-        return False
-
-    # Parse optional display name from "Name<email>" or plain "email" format
-    import re as _re
-    _m = _re.match(r'^(.+?)\s*<([^>]+)>$', email_from)
-    if _m:
-        sender = {"name": _m.group(1).strip(), "email": _m.group(2).strip()}
-    else:
-        sender = {"email": email_from}
-
-    payload = {
-        "sender": sender,
-        "to": [{"email": addr} for addr in recipients],
-        "subject": subject,
-        "textContent": body,
-    }
-    if html_body:
-        payload["htmlContent"] = html_body
-
-    try:
-        resp = _requests.post(
-            "https://api.brevo.com/v3/smtp/email",
-            headers={"api-key": api_key, "Content-Type": "application/json"},
-            json=payload,
-            timeout=15,
-        )
-        if resp.status_code in (200, 201):
-            print(f"[EMAIL] Sent via Brevo API: {subject}")
-            return True
-        else:
-            print(f"[EMAIL] Brevo API error {resp.status_code}: {resp.text}")
-            return False
-    except Exception as exc:
-        print(f"[EMAIL] Brevo API request failed: {exc}")
-        return False
-
 
 def send_email_notification(
     subject: str,
     body: str,
     html_body: Optional[str] = None
 ) -> bool:
-    """Send an email using Brevo API or SMTP from environment variables.
+    """Send an email via Gmail SMTP from environment variables.
 
     Expected environment variables:
       - EMAIL_ENABLED: enable/disable sending (true/false)
-      - BREVO_API_KEY: Brevo API key (preferred, works through firewalls)
       - SMTP_HOST, SMTP_PORT, SMTP_SSL (true/false)
       - SMTP_USER, SMTP_PASS
       - EMAIL_FROM, EMAIL_TO (comma-separated)
@@ -414,12 +364,7 @@ def send_email_notification(
         print("[EMAIL] No valid recipients found")
         return False
 
-    # Try Brevo HTTP API first (bypasses SMTP firewall blocks)
-    brevo_api_key = os.getenv("BREVO_API_KEY", "").strip()
-    if brevo_api_key:
-        return _send_via_brevo_api(subject, body, html_body, email_from, recipients, brevo_api_key)
-
-    # Fall back to SMTP
+    # Send via SMTP
     try:
         smtp_host = os.getenv("SMTP_HOST", "").strip()
         smtp_port_text = os.getenv("SMTP_PORT", "587").strip()

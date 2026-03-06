@@ -3,7 +3,8 @@
     "allow": [
       "WebSearch",
       "WebFetch(domain:apps.apple.com)",
-      "WebFetch(domain:www.matchi.se)"
+      "WebFetch(domain:www.matchi.se)",
+      "mcp__render__get_selected_workspace"
     ]
   }
 }
