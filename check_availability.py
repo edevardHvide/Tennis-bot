@@ -21,7 +21,6 @@ from facilities import facilities
 from email_notifications import (
     send_email_notification as send_email,
     send_new_courts_notification,
-    send_test_email
 )
 
 # Initialize rich console
@@ -677,48 +676,34 @@ def test_notifications():
 
 
 def test_email():
-    """Send a test email using SMTP configuration from environment variables."""
-    console.print("\n📧 Sending test email...", style="bold blue")
-    
-    # Get a random quote
+    """Send a test email with real availability data using the same format as alerts."""
+    console.print("\n📧 Fetching live availability for test email...", style="bold blue")
+
+    dates = get_date_range(3)
     quote = _get_random_quote()
-    
+
     try:
-        # Try the new enhanced email first
-        ok = send_test_email(quote)
-        if ok:
-            console.print("✅ Test email sent successfully.", style="bold green")
-            console.print("📧 Check your inbox for a beautifully formatted HTML email!", style="green")
-        else:
-            console.print(
-                "❌ Test email did not send. Check EMAIL_* and SMTP_* env vars.",
-                style="bold red",
-            )
+        current_slots = collect_all_slots(dates)
     except Exception as exc:
-        console.print(f"❌ Error sending enhanced test email: {exc}", style="bold red")
-        console.print("🔄 Trying fallback email format...", style="yellow")
-        
-        # Fallback to simple email
-        subject = "📧 Email Test: Matchi Availability Bot"
-        body_lines = [
-            "If you received this message, your SMTP configuration works.",
-            "",
-            "This is an automated test message from Matchi Availability Bot.",
-        ]
-        if quote:
-            body_lines.extend(["", f"Quote: {quote}"])
-        body = "\n".join(body_lines)
-        try:
-            ok = send_email(subject=subject, body=body)
-            if ok:
-                console.print("✅ Fallback test email sent successfully.", style="bold green")
-            else:
-                console.print(
-                    "❌ Test email did not send. Check EMAIL_* and SMTP_* env vars.",
-                    style="bold red",
-                )
-        except Exception as exc2:
-            console.print(f"❌ Error sending fallback test email: {exc2}", style="bold red")
+        console.print(f"❌ Failed to fetch availability: {exc}", style="bold red")
+        return
+
+    # Treat all current slots as "new" by passing empty previous slots
+    new_courts_data = _build_new_courts_email_data(current_slots, {}, dates)
+
+    if not new_courts_data:
+        console.print("⚠️  No courts found right now — nothing to send.", style="yellow")
+        return
+
+    console.print("📧 Sending test email with real availability...", style="bold blue")
+    ok = send_new_courts_notification(new_courts_data, quote)
+    if ok:
+        console.print("✅ Test email sent successfully.", style="bold green")
+    else:
+        console.print(
+            "❌ Test email did not send. Check EMAIL_* and SMTP_* env vars.",
+            style="bold red",
+        )
 
 
 def run_monitor(
