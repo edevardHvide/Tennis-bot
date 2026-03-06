@@ -21,6 +21,7 @@ from facilities import facilities
 from email_notifications import (
     send_email_notification as send_email,
     send_new_courts_notification,
+    send_newsletter_notification,
 )
 
 # Initialize rich console
@@ -706,6 +707,39 @@ def test_email():
         )
 
 
+def run_newsletter(
+    days_ahead: int = 6,
+    between: tuple[datetime.time, datetime.time] | None = None,
+    facility_filter: list[str] | None = None,
+) -> None:
+    """Fetch a live availability snapshot and send it as a newsletter email."""
+    console.print("\n📰 Generating newsletter...", style="bold blue")
+
+    dates = get_date_range(days_ahead)
+    try:
+        all_slots = collect_all_slots(dates, facility_filter)
+    except Exception as exc:
+        console.print(f"❌ Failed to fetch availability: {exc}", style="bold red")
+        return
+
+    if between:
+        for facility_key in list(all_slots.keys()):
+            for date_obj in list(all_slots[facility_key].keys()):
+                all_slots[facility_key][date_obj] = _filter_slots_by_between(
+                    all_slots[facility_key][date_obj], between
+                )
+
+    quote = _get_random_quote()
+    ok = send_newsletter_notification(all_slots, quote, days_ahead)
+    if ok:
+        console.print("✅ Newsletter sent successfully.", style="bold green")
+    else:
+        console.print(
+            "❌ Newsletter did not send. Check EMAIL_* and SMTP_* env vars.",
+            style="bold red",
+        )
+
+
 def run_monitor(
     dates: list[datetime.date],
     between: tuple[datetime.time, datetime.time] | None = None,
@@ -889,6 +923,35 @@ For more information, visit: https://github.com/your-username/tennis-bot
         ),
     )
 
+    # Newsletter command
+    newsletter_parser = subparsers.add_parser(
+        "newsletter",
+        help="Send a 7-day availability snapshot newsletter",
+        description="Fetch live availability and send it as a formatted newsletter email",
+    )
+    newsletter_parser.add_argument(
+        "--days-ahead",
+        type=int,
+        default=6,
+        metavar="N",
+        help="Number of days ahead to include in snapshot. Default: 6",
+    )
+    newsletter_parser.add_argument(
+        "--between",
+        type=str,
+        default=None,
+        metavar="START-END",
+        help="Only include time slots within this range (e.g. 16-22).",
+    )
+    newsletter_parser.add_argument(
+        "--facility",
+        type=str,
+        action="append",
+        dest="facilities",
+        metavar="NAME",
+        help="Only include this facility (can be repeated).",
+    )
+
     # Monitoring options (apply to monitor command)
     monitor_parser.add_argument(
         "--days-ahead",
@@ -1016,6 +1079,23 @@ For more information, visit: https://github.com/your-username/tennis-bot
         test_notifications()
     elif args.command == "test-email":
         test_email()
+    elif args.command == "newsletter":
+        between = None
+        if getattr(args, "between", None):
+            try:
+                between = parse_between_time_range(args.between)
+            except argparse.ArgumentTypeError as exc:
+                raise SystemExit(str(exc)) from exc
+        facility_filter = (
+            [f.lower() for f in args.facilities]
+            if getattr(args, "facilities", None)
+            else None
+        )
+        run_newsletter(
+            days_ahead=getattr(args, "days_ahead", 6),
+            between=between,
+            facility_filter=facility_filter,
+        )
     else:
         parser.print_help()
 

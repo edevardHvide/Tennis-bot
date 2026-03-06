@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Under New Management — Tennis Court Snapshot{% endblock %}
+
+{% block header_title %}Under New Management.{% endblock %}
+{% block header_subtitle %}{{ date_range_label }}{% endblock %}
+
+{% block content %}
+<p class="content-lead">
+    We forked this project from Joachim. He had the right idea &mdash; but not the commitment to match.
+    The service deserved better, and now it&rsquo;s getting it.<br><br>
+    Full ownership has been taken. The bot is live, it&rsquo;s sharp, and it&rsquo;s just getting started.
+</p>
+
+<div class="info-box">
+    <strong>What&rsquo;s coming:</strong> More facilities. Smarter filters. Better notifications.
+    This is version one of something that will keep growing &mdash; and you&rsquo;re along for the ride.
+</div>
+
+<div class="section-heading">COURTS AVAILABLE RIGHT NOW</div>
+
+<table class="stats-table" role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr><td>Facilities checked</td><td>{{ facilities|length }}</td></tr>
+    <tr><td>Days covered</td><td>{{ days_covered }}</td></tr>
+    <tr><td>Total courts available</td><td>{{ total_available_courts }}</td></tr>
+</table>
+
+{% for facility_data in facilities %}
+<div class="facility-section">
+    <div class="facility-header" style="background:#f1f5f9 !important; padding:14px 20px; border-bottom:1px solid #e2e8f0;">
+        <div class="facility-title" style="font-size:14px; font-weight:700; color:#0f172a !important;">{{ facility_data.name }}</div>
+    </div>
+
+    <div class="facility-body" style="background:#ffffff !important;">
+        {% if facility_data.dates %}
+            {% for date_info in facility_data.dates %}
+            <div class="date-group">
+                <div class="date-label" style="color:#94a3b8 !important;">{{ date_info.display_name }}</div>
+
+                {% for time_slot in date_info.time_slots %}
+                <a href="{{ time_slot.url }}" style="text-decoration:none; display:block; color:inherit;">
+                <div class="slot-row" style="cursor:pointer;">
+                    <div class="slot-time" style="color:#0f172a !important; background:#f1f5f9 !important;">{{ time_slot.time }}</div>
+                    <div class="slot-courts">
+                        {% for court in time_slot.courts %}
+                        <span class="court-tag {{ court.type }}">{{ court.name }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% endfor %}
+
+            <div class="cta-wrap">
+                <a href="{{ facility_data.booking_url }}" class="cta-button">
+                    Book at {{ facility_data.name }}
+                </a>
+            </div>
+        {% else %}
+            <div class="warning-box" style="margin:16px 0;">
+                No courts currently available at {{ facility_data.name }} in this window.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+
+{% if quote %}
+<div class="quote-block">
+    <p>{{ quote }}</p>
+</div>
+{% endif %}
+
+<p style="font-size: 13px; color: #94a3b8; margin-top: 16px;">
+    Live snapshot generated on demand. Availability changes fast &mdash; book before it&rsquo;s gone.
+</p>
+{% endblock %}

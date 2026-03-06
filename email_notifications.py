@@ -109,33 +109,52 @@ def _render_template(template_name: str, **context) -> Tuple[str, str]:
 
 def _html_to_plain_text(html_content: str, **context) -> str:
     """Convert HTML email to plain text fallback."""
-    # Simple plain text conversion - in production you might use html2text
     lines = []
-    
-    if 'facilities' in context:
+
+    if context.get('newsletter_mode'):
+        date_range_label = context.get('date_range_label', '')
+        total = context.get('total_available_courts', 0)
+        facilities_list = context.get('facilities', [])
+        days = context.get('days_covered', 0)
+        lines.append(f"TENNIS COURT SNAPSHOT — {date_range_label}")
+        lines.append("Under New Management. Full ownership. Limitless growth.")
+        lines.append("=" * 50)
+        lines.append(f"Total courts available: {total}  |  Facilities: {len(facilities_list)}  |  Days: {days}")
+        lines.append("")
+        for facility in facilities_list:
+            lines.append(facility['name'].upper())
+            for date_info in facility.get('dates', []):
+                lines.append(f"  {date_info['display_name']}")
+                for time_slot in date_info['time_slots']:
+                    courts = ", ".join([court['name'] for court in time_slot['courts']])
+                    lines.append(f"    {time_slot['time']}: {courts}")
+            lines.append(f"  Book: {facility.get('booking_url', '')}")
+            lines.append("")
+
+    elif 'facilities' in context:
         # New courts notification
         lines.append("🎾 NEW TENNIS COURTS AVAILABLE!")
         lines.append("=" * 40)
         lines.append("")
-        
+
         total_courts = context.get('total_new_courts', 0)
         lines.append(f"Found {total_courts} new court{'s' if total_courts != 1 else ''}")
         lines.append("")
-        
+
         for facility in context['facilities']:
             lines.append(f"🏟️ {facility['name']}")
             lines.append("-" * len(facility['name']))
-            
+
             for date_info in facility['dates']:
                 lines.append(f"📅 {date_info['display_name']}")
-                
+
                 for time_slot in date_info['time_slots']:
                     courts = ", ".join([court['name'] for court in time_slot['courts']])
                     lines.append(f"  {time_slot['time']}: {courts}")
-                
+
                 lines.append(f"  🔗 Book: {date_info.get('web_url', date_info['booking_url'])}")
                 lines.append("")
-    
+
     elif context.get('quote'):
         # Test email
         lines.extend([
@@ -150,7 +169,7 @@ def _html_to_plain_text(html_content: str, **context) -> str:
             "",
             f"Generated at: {context.get('timestamp', 'Unknown')}"
         ])
-    
+
     return "\n".join(lines)
 
 
@@ -278,6 +297,124 @@ def prepare_new_courts_email(
     html_body, plain_text_body = _render_template('new_courts.html', **context)
     
     return subject, html_body, plain_text_body
+
+
+def prepare_newsletter_email(
+    all_slots: Dict[str, Any],
+    quote: Optional[str] = None,
+    days_ahead: int = 6,
+) -> Tuple[str, str, str]:
+    """Prepare newsletter snapshot email.
+
+    Args:
+        all_slots: Full slot data — facility_key -> date -> time_slot -> [court_names]
+        quote: Optional quote to include
+        days_ahead: Number of days covered (used for label only)
+
+    Returns:
+        Tuple of (subject, html_body, plain_text_body)
+    """
+    # Collect all dates across all facilities
+    all_dates: set[datetime.date] = set()
+    for dates_data in all_slots.values():
+        all_dates.update(dates_data.keys())
+    sorted_dates = sorted(all_dates)
+
+    if sorted_dates:
+        def _fmt(d: datetime.date) -> str:
+            return d.strftime("%-d %b %Y") if hasattr(d, 'strftime') else str(d)
+        try:
+            date_range_label = f"{sorted_dates[0].strftime('%-d %b')} \u2013 {sorted_dates[-1].strftime('%-d %b %Y')}"
+        except ValueError:
+            # Windows doesn't support %-d; fall back to %#d
+            try:
+                date_range_label = f"{sorted_dates[0].strftime('%#d %b')} \u2013 {sorted_dates[-1].strftime('%#d %b %Y')}"
+            except ValueError:
+                date_range_label = f"{sorted_dates[0].strftime('%d %b')} \u2013 {sorted_dates[-1].strftime('%d %b %Y')}"
+    else:
+        date_range_label = "No dates"
+
+    days_covered = len(sorted_dates)
+
+    try:
+        from facilities import facility_display_names
+    except ImportError:
+        facility_display_names = {}
+
+    facilities = []
+    total_available_courts = 0
+    today = datetime.date.today()
+
+    for facility_key, dates_data in all_slots.items():
+        facility_name = facility_display_names.get(facility_key.lower(), facility_key.capitalize())
+        facility_info: Dict[str, Any] = {
+            'name': facility_name,
+            'booking_url': _build_booking_url(facility_key, today),
+            'dates': [],
+        }
+
+        for date_obj in sorted_dates:
+            time_slots = dates_data.get(date_obj, {})
+            if not time_slots:
+                continue
+            if date_obj < today:
+                continue
+
+            date_info: Dict[str, Any] = {
+                'display_name': _format_date_display(date_obj),
+                'booking_url': _build_booking_url(facility_key, date_obj),
+                'web_url': _build_web_booking_url(facility_key, date_obj),
+                'time_slots': [],
+            }
+
+            for time_slot, courts in time_slots.items():
+                if not courts:
+                    continue
+                court_items = []
+                for court_name in courts:
+                    court_items.append({
+                        'name': court_name,
+                        'type': _get_court_type(court_name),
+                        'is_new': False,
+                    })
+                    total_available_courts += 1
+                date_info['time_slots'].append({
+                    'time': time_slot,
+                    'url': _build_booking_url(facility_key, date_obj, time_slot),
+                    'courts': court_items,
+                })
+
+            if date_info['time_slots']:
+                facility_info['dates'].append(date_info)
+
+        facilities.append(facility_info)
+
+    subject = f"🎾 Under New Management — {total_available_courts} courts available, {date_range_label}"
+
+    context = {
+        'facilities': facilities,
+        'total_available_courts': total_available_courts,
+        'date_range_label': date_range_label,
+        'days_covered': days_covered,
+        'newsletter_mode': True,
+        'quote': quote,
+    }
+
+    html_body, plain_text_body = _render_template('newsletter.html', **context)
+    return subject, html_body, plain_text_body
+
+
+def send_newsletter_notification(
+    all_slots: Dict[str, Any],
+    quote: Optional[str] = None,
+    days_ahead: int = 6,
+) -> bool:
+    """Send newsletter snapshot email.
+
+    Returns True if email sent successfully, False otherwise.
+    """
+    subject, html_body, plain_text = prepare_newsletter_email(all_slots, quote, days_ahead)
+    return send_email_notification(subject, plain_text, html_body)
 
 
 def prepare_test_email(quote: Optional[str] = None) -> Tuple[str, str, str]:
