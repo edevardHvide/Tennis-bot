@@ -75,12 +75,7 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
       <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                <path strokeWidth="2" strokeLinecap="round" d="M8 12l2 2 4-4" />
-              </svg>
-            </div>
+            <span className="text-2xl">🎾</span>
             <h1 className="text-xl font-bold text-gray-900">Tennis Bot</h1>
           </div>
           <div className="flex items-center gap-4">
@@ -146,26 +141,66 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
           </div>
         )}
 
-        {/* Empty state */}
-        {!loading && preferences.length === 0 && (
-          <div className="text-center py-16">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
+        {/* Onboarding guide — shown when user has no preferences */}
+        {!loading && preferences.length === 0 && !showForm && (
+          <div className="space-y-6">
+            {/* Welcome */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 mb-4">
+                <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Welcome to Tennis Bot!</h3>
+              <p className="text-gray-500 max-w-md mx-auto">
+                Never miss an open court again. Tennis Bot monitors{' '}
+                <a href="https://www.matchi.se" target="_blank" rel="noopener noreferrer" className="text-green-600 underline">matchi.se</a>{' '}
+                and emails you when matching courts become available.
+              </p>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-1">No preferences yet</h3>
-            <p className="text-gray-500 mb-6">
-              Add a preference to start getting notified about available courts.
-            </p>
-            {!showForm && (
+
+            {/* How it works — 3 steps */}
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-green-600 text-white text-sm font-bold flex items-center justify-center">1</span>
+                  <h4 className="font-semibold text-gray-900">Set a preference</h4>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Pick a facility (e.g. Frogner), choose which days, and set your preferred time window.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-green-600 text-white text-sm font-bold flex items-center justify-center">2</span>
+                  <h4 className="font-semibold text-gray-900">We scan for courts</h4>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Every 5 minutes, Tennis Bot checks matchi.se for newly available slots that match your criteria.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-green-600 text-white text-sm font-bold flex items-center justify-center">3</span>
+                  <h4 className="font-semibold text-gray-900">Get notified</h4>
+                </div>
+                <p className="text-sm text-gray-500">
+                  When a matching court opens up, you'll get an email alert so you can book it before it's gone.
+                </p>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="text-center">
               <button
                 onClick={handleAdd}
-                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors text-lg"
               >
-                Add Your First Preference
+                Create Your First Preference
               </button>
-            )}
+            </div>
           </div>
         )}
 

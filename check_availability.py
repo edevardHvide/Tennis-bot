@@ -22,6 +22,7 @@ from email_notifications import (
     send_email_notification as send_email,
     send_new_courts_notification,
     send_newsletter_notification,
+    send_ad_hoc_newsletter,
 )
 
 # Initialize rich console
@@ -740,6 +741,68 @@ def run_newsletter(
         )
 
 
+NEWSLETTERS = {
+    "announcement": {
+        "subject": "Tennis Bot is live — get alerts for open courts!",
+        "heading": "Tennis Bot Is Live",
+        "subtitle": "Your personal court alert system",
+        "lead": (
+            "We built a tool that <strong>monitors matchi.se every 5 minutes</strong> "
+            "and emails you the moment a tennis court opens up that matches your "
+            "preferences. No more refreshing the booking page."
+        ),
+        "sections": [
+            {
+                "title": "How it works",
+                "body": (
+                    "1. Go to the app and log in with your email<br>"
+                    "2. Add a preference — pick a facility, days, and time window<br>"
+                    "3. Sit back — you'll get an email alert whenever a matching court appears"
+                ),
+            },
+            {
+                "title": "What can I set up?",
+                "body": (
+                    "Choose from facilities like <strong>Frogner</strong>, "
+                    "<strong>Hasle</strong>, <strong>Holmen</strong>, and more. "
+                    "Pick which days of the week you're available, and set a time "
+                    "window (e.g. 17:00–21:00 for after-work sessions)."
+                ),
+            },
+        ],
+        "cta_url": "http://tennis-bot-frontend.s3-website.eu-north-1.amazonaws.com",
+        "cta_text": "Set up your preferences now",
+    },
+}
+
+
+def run_send_newsletter(template: str) -> None:
+    """Send an ad-hoc newsletter using a predefined template."""
+    content = NEWSLETTERS.get(template)
+    if not content:
+        console.print(
+            f"❌ Unknown newsletter '{template}'. "
+            f"Available: {', '.join(NEWSLETTERS.keys())}",
+            style="bold red",
+        )
+        return
+
+    console.print(f"\n📨 Sending newsletter '{template}'...", style="bold blue")
+
+    quote = _get_random_quote()
+    context = {**content, "quote": quote}
+    subject = content["subject"]
+
+    ok = send_ad_hoc_newsletter(template, subject, context)
+    if ok:
+        console.print("✅ Newsletter sent.", style="bold green")
+    else:
+        console.print(
+            "❌ Newsletter did not send. Check EMAIL_* and SMTP_* env vars.",
+            style="bold red",
+        )
+
+
 def run_monitor(
     dates: list[datetime.date],
     between: tuple[datetime.time, datetime.time] | None = None,
@@ -889,7 +952,7 @@ Examples:
   %(prog)s test-notifications  Test alert system
   %(prog)s --help              Show this help message
 
-For more information, visit: https://github.com/your-username/tennis-bot
+For more information, visit: https://availabilitymonitor.club
         """.strip(),
     )
 
@@ -950,6 +1013,20 @@ For more information, visit: https://github.com/your-username/tennis-bot
         dest="facilities",
         metavar="NAME",
         help="Only include this facility (can be repeated).",
+    )
+
+    # Send ad-hoc newsletter command
+    send_nl_parser = subparsers.add_parser(
+        "send-newsletter",
+        help="Send an ad-hoc newsletter from a template",
+        description="Render an email template and send it to all EMAIL_TO recipients",
+    )
+    send_nl_parser.add_argument(
+        "--template",
+        type=str,
+        default="announcement",
+        metavar="NAME",
+        help="Template name (without .html) under email_templates/. Default: announcement",
     )
 
     # Monitoring options (apply to monitor command)
@@ -1096,6 +1173,9 @@ For more information, visit: https://github.com/your-username/tennis-bot
             between=between,
             facility_filter=facility_filter,
         )
+    elif args.command == "send-newsletter":
+        template = getattr(args, "template", "announcement")
+        run_send_newsletter(template)
     else:
         parser.print_help()
 

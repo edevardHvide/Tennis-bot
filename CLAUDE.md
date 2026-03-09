@@ -2,150 +2,101 @@
 
 ## Project Overview
 
-A Python polling bot that monitors [matchi.se](https://www.matchi.se) for open tennis court slots, then fires desktop popups and HTML email alerts when new courts appear. It scrapes the Matchi booking schedule page (no API), compares slot state between polls, and notifies only on new courts (not removals).
+Serverless tennis court availability monitor. Scrapes [matchi.se](https://www.matchi.se) for open court slots, matches against user preferences, and sends HTML email alerts via AWS SES. No API from Matchi — pure HTML scraping.
 
-## Key Files
+**Repo:** https://github.com/edevardHvide/Tennis-bot
 
-| File | Role |
-|------|------|
-| `check_availability.py` | Entry point, CLI, monitoring loop, slot diffing, notification orchestration |
-| `facilities.py` | Facility name → Matchi facility ID mappings (active + inactive) |
-| `email_notifications.py` | Email sending via Brevo API or SMTP; Jinja2 HTML template rendering |
-| `email_templates/new_courts.html` | Jinja2 template for new-court alerts |
-| `email_templates/test_email.html` | Jinja2 template for test emails |
-| `email_templates/base.html` | Shared HTML base template |
-| `quotes.csv` | Random quotes appended to email notifications |
-| `requirements.txt` | Canonical dependency list (use this for installs) |
-| `pyproject.toml` | Poetry metadata (package-mode = false) |
-| `.env` | Local secrets — never commit (gitignored) |
+**To agent** If you encounter something surprising, fix a bug, or learn a new constraint, update this CLAUDE.md file with that information to improve future performance
 
 ## Architecture
 
-```
-check_availability.py
-  run_monitor()                  # main loop
-    collect_all_slots()          # scrapes matchi.se for all facilities/dates
-    _filter_slots_by_between()   # optional time-window filter
-    has_changes() / get_slot_changes()  # diff against previous state
-    _build_new_courts_email_data()      # transform diff for email template
-    send_new_courts_notification()      # email_notifications.py
-    send_notification()                 # desktop popup (win10toast / osascript)
-```
+Three AWS Lambda functions + React frontend:
 
-Slot data structure throughout: `dict[facility_key, dict[date, dict[time_slot_label, list[court_name]]]]`
+1. **Scraper** (`lambdas/scraper/`) — EventBridge cron triggers scraping of matchi.se for 3 facilities. Diffs against DynamoDB snapshots, invokes notifications Lambda with new slots.
+2. **Preferences API** (`lambdas/preferences/`) — REST CRUD for user notification preferences (facility, days, time range). Behind API Gateway.
+3. **Notifications** (`lambdas/notifications/`) — Matches scraper diffs against user preferences (facility + day-of-week + time window), deduplicates, sends HTML email via SES.
+4. **Frontend** (`frontend/`) — React + TypeScript + Vite + Tailwind. Users register by email and manage notification preferences.
 
-## Setup
+**Local CLI** (`check_availability.py`) — Standalone polling bot with Windows toast + email alerts for manual use.
+
+## Tech Stack
+
+- **Backend:** Python 3.11, requests, beautifulsoup4, boto3, arrow, jinja2
+- **Frontend:** React 19, TypeScript 5.9, Vite 7, Tailwind CSS 4
+- **Infra:** AWS Lambda, DynamoDB (on-demand), API Gateway, EventBridge, SES, S3
+- **Region:** eu-north-1
+
+## Windows: Python Not Found
+
+If you see `"Python was not found"` or `"File association not found for extension .py"`, the venv is not activated. Fix:
 
 ```bash
-# Recommended: uv
-uv python install 3.11
+# Activate the venv first (run from repo root)
+source .venv/Scripts/activate
+
+# Then run Python commands normally
+python -m pytest tests/ -v
+```
+
+If the venv doesn't exist yet:
+```bash
 uv venv --python 3.11 .venv
-./.venv/Scripts/Activate.ps1      # Windows PowerShell
+source .venv/Scripts/activate
 uv pip install -r requirements.txt
-
-# Or plain pip
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
 ```
 
-Python 3.11+ required (uses `X | Y` union type hints throughout).
-
-## Running
+## Key Commands
 
 ```bash
-# Continuous monitor — evening slots, all facilities
-python check_availability.py monitor --between 17-22 --interval-seconds 300
+# Tests
+python -m pytest tests/ -v
 
-# Single check and exit (good for Task Scheduler / cron)
-python check_availability.py monitor --once --between 17-22
+# Build & deploy (see Makefile)
+make deploy-all          # Deploy everything
+make deploy-scraper      # Package & deploy scraper Lambda
+make deploy-preferences  # Package & deploy preferences Lambda
+make deploy-notifications # Package & deploy notifications Lambda
+make deploy-frontend     # Build & sync frontend to S3
+make deploy-dynamo       # Create/verify DynamoDB tables
 
-# Specific facilities
-python check_availability.py monitor --facility frogner --facility ota
-
-# Specific dates
-python check_availability.py monitor --dates 2025-08-20,2025-08-21
-
-# Suppress output when nothing changes
-python check_availability.py monitor --quiet
-
-# Test desktop popups
-python check_availability.py test-notifications
-
-# Test email
-python check_availability.py test-email
+# Frontend dev
+cd frontend && npm install && npm run dev
 ```
 
-## Environment Variables (.env)
+## DynamoDB Tables
 
-```bash
-EMAIL_ENABLED=1                    # set to 0 to silence all emails
+| Table | PK | SK | Notes |
+|-------|----|----|-------|
+| tennis-users | userId | — | User registration |
+| tennis-preferences | userId | preferenceId | Notification preferences |
+| tennis-availability | facilityId | date | Scraper snapshots |
+| tennis-notifications | notificationId | — | Dedup with 7-day TTL |
 
-# Option A: Brevo HTTP API (preferred — bypasses SMTP firewall blocks)
-BREVO_API_KEY=your_brevo_api_key
+## Active Facilities
 
-# Option B: SMTP fallback (used only if BREVO_API_KEY is absent)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SSL=0
-SMTP_USER=your@gmail.com
-SMTP_PASS=your_app_password        # use an app password for Gmail/Yahoo
+Defined in `facilities.py`: `frogner` (2259), `ota` (1779), `bergentennisarena` (301)
 
-EMAIL_FROM=Your Name <your@gmail.com>
-EMAIL_TO=first@example.com,second@example.com
+## Project Structure
+
+```
+lambdas/
+  scraper/       handler.py, scraper.py, diff.py
+  preferences/   handler.py
+  notifications/  handler.py, matcher.py, dedup.py, email_builder.py
+frontend/src/
+  components/    Dashboard, LoginForm, PreferenceForm, PreferenceCard
+  api.ts, types.ts, App.tsx
+infra/
+  dynamo/        tables.json, deploy.sh
+  api/           openapi.yaml
+tests/           test_scraper.py, test_preferences.py, test_notifications.py
+email_templates/ base.html, new_courts.html, newsletter.html, etc.
 ```
 
-Brevo API is tried first; SMTP is the fallback. Email is sent only when NEW courts appear (not for removals).
+## Environment Variables
 
-## Common Tasks
-
-### Add or disable a facility
-Edit `facilities.py`:
-- Move entry between `facilities` (active) and `inactive_facilities` (disabled)
-- Add the matching display name to `facility_display_names`
-- The `facilities` dict maps lowercase key → Matchi integer facility ID
-
-### Modify email templates
-Templates live in `email_templates/` and are rendered with Jinja2. Context variables passed to `new_courts.html`:
-- `facilities` — list of facility dicts with `name`, `dates` (each with `display_name`, `booking_url`, `web_url`, `time_slots`)
-- `total_new_courts` — int
-- `quote` — optional string
-- `timestamp` — render time string
-
-If Jinja2 is unavailable or rendering fails, `email_notifications.py` falls back to plain text automatically.
-
-### Add a new random quote
-Append a row to `quotes.csv`. Format: `index,quote text` or just `quote text`.
-
-## Testing
-
-```bash
-# Unit tests for slot logic (date ranges, time filtering, diffing)
-python -m pytest test_slot_logic.py -v
-
-# Integration test (hits live matchi.se — requires network)
-python -m pytest test_integration.py -v
-```
-
-`test_slot_logic.py` covers: `get_date_range`, `parse_dates_list`, `parse_between_time_range`, `_filter_slots_by_between`, `has_changes`, `get_slot_changes`.
-
-## Scraping Notes
-
-- Target URL: `https://www.matchi.se/book/schedule?facilityId=<id>&date=<YYYY-MM-DD>&sport=1`
-- Available slots are `<td class="slot free">` elements; `title` attribute contains `<br>`-separated parts: `[0]` unused, `[1]` court name, `[2]` time slot label
-- No auth required; no rate limiting observed, but 5-minute poll intervals are standard
-- If the site changes its HTML structure, `fetch_available_slots()` in `check_availability.py:77` is the only scraping code to update
-
-## Desktop Notifications
-
-- **Windows**: `win10toast` — shows a 5-second toast; falls back to `print` if the library fails
-- **macOS**: `osascript` AppleScript alert — no special permissions needed
-- Desktop alerts fire for both new courts and changes; email fires only for new courts
-
-## Conventions
-
-- Facility keys are always lowercase strings (e.g., `"frogner"`, `"ota"`)
-- Dates are `datetime.date` objects throughout; never strings in internal data structures
-- Time slot labels come directly from Matchi HTML (e.g., `"17:00-18:00"`) — do not normalise them
-- `--between` filters are applied after fetching, not in the scraper
-- Error backoff in `run_monitor`: doubles each failure up to 10-minute cap
+**Scraper:** `SCRAPER_DAYS_AHEAD` (14), `DYNAMODB_TABLE`, `NOTIFICATIONS_FUNCTION`
+**Preferences:** `USERS_TABLE`, `PREFS_TABLE`
+**Notifications:** `NOTIFICATIONS_TABLE`, `PREFS_TABLE`, `USERS_TABLE`, `SES_FROM_EMAIL`
+**Frontend:** `VITE_API_URL` (API Gateway base URL)
+**Local CLI:** `EMAIL_ENABLED`, `BREVO_API_KEY`, `SMTP_*`, `EMAIL_FROM`, `EMAIL_TO`

@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { Preference, PreferenceFormData } from './types';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://mk70fzrqy6.execute-api.eu-north-1.amazonaws.com/prod',
+  baseURL: import.meta.env.VITE_API_URL || 'https://api.availabilitymonitor.club',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -20,9 +20,17 @@ export async function registerUser(userId: string, name: string): Promise<void> 
   }
 }
 
+function normalizePreference(p: Record<string, unknown>): Preference {
+  // Backwards compat: legacy items have facilityId (string) instead of facilityIds (array)
+  const facilityIds = (p.facilityIds as string[] | undefined)
+    ?? (p.facilityId ? [p.facilityId as string] : []);
+  return { ...p, facilityIds } as Preference;
+}
+
 export async function getPreferences(userId: string): Promise<Preference[]> {
   const response = await api.get(`/users/${encodeURIComponent(userId)}/preferences`);
-  return response.data.preferences ?? response.data ?? [];
+  const raw: Record<string, unknown>[] = response.data.data ?? response.data.preferences ?? response.data ?? [];
+  return raw.map(normalizePreference);
 }
 
 export async function createPreference(
@@ -33,7 +41,7 @@ export async function createPreference(
     `/users/${encodeURIComponent(userId)}/preferences`,
     data
   );
-  return response.data;
+  return response.data.data ?? response.data;
 }
 
 export async function updatePreference(
@@ -45,7 +53,7 @@ export async function updatePreference(
     `/users/${encodeURIComponent(userId)}/preferences/${encodeURIComponent(preferenceId)}`,
     data
   );
-  return response.data;
+  return response.data.data ?? response.data;
 }
 
 export async function deletePreference(
