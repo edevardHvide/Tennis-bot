@@ -1,0 +1,301 @@
+openapi: "3.0.3"
+info:
+  title: Tennis Bot Preferences API
+  description: >
+    REST API for managing users and per-user alert preferences for the Tennis
+    Court Availability Alert System. Users can register and configure alerts
+    that specify which facility, dates, and time windows they want to monitor.
+  version: "1.0.0"
+
+servers:
+  - url: https://{apiId}.execute-api.eu-north-1.amazonaws.com/{stage}
+    variables:
+      apiId:
+        default: "YOUR_API_ID"
+      stage:
+        default: prod
+
+paths:
+  /users:
+    post:
+      summary: Register a new user
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+            example:
+              userId: "alice@example.com"
+              name: "Alice"
+      responses:
+        "201":
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Validation error (invalid email, missing fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{userId}/preferences:
+    parameters:
+      - $ref: "#/components/parameters/userId"
+    get:
+      summary: List all preferences for a user
+      operationId: listPreferences
+      responses:
+        "200":
+          description: List of preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesListResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      summary: Create a new preference for a user
+      operationId: createPreference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePreferenceRequest"
+            example:
+              facilityId: "frogner"
+              dates: ["2026-06-01", "2026-06-02"]
+              timeFrom: "17:00"
+              timeTo: "22:00"
+      responses:
+        "201":
+          description: Preference created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferenceResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{userId}/preferences/{preferenceId}:
+    parameters:
+      - $ref: "#/components/parameters/userId"
+      - $ref: "#/components/parameters/preferenceId"
+    put:
+      summary: Update an existing preference
+      operationId: updatePreference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePreferenceRequest"
+      responses:
+        "200":
+          description: Preference updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferenceResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User or preference not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      summary: Delete a preference
+      operationId: deletePreference
+      responses:
+        "200":
+          description: Preference deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      deleted:
+                        type: boolean
+                        example: true
+        "404":
+          description: User or preference not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  parameters:
+    userId:
+      name: userId
+      in: path
+      required: true
+      description: The user's email address (URL-encoded)
+      schema:
+        type: string
+        format: email
+        example: "alice@example.com"
+    preferenceId:
+      name: preferenceId
+      in: path
+      required: true
+      description: UUID of the preference
+      schema:
+        type: string
+        format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440000"
+
+  schemas:
+    CreateUserRequest:
+      type: object
+      required:
+        - userId
+        - name
+      properties:
+        userId:
+          type: string
+          format: email
+          description: User's email address (used as primary key)
+          example: "alice@example.com"
+        name:
+          type: string
+          description: Display name of the user
+          minLength: 1
+          maxLength: 200
+          example: "Alice"
+
+    UserResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            userId:
+              type: string
+              format: email
+            name:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+
+    CreatePreferenceRequest:
+      type: object
+      required:
+        - facilityId
+        - dates
+        - timeFrom
+        - timeTo
+      properties:
+        facilityId:
+          type: string
+          description: >
+            Facility key — one of the active facility identifiers defined in
+            facilities.py (e.g. "frogner", "ota", "bergentennisarena").
+          enum:
+            - frogner
+            - ota
+            - bergentennisarena
+          example: "frogner"
+        dates:
+          type: array
+          description: List of dates to monitor, each in YYYY-MM-DD format
+          minItems: 1
+          items:
+            type: string
+            format: date
+            pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          example: ["2026-06-01", "2026-06-07"]
+        timeFrom:
+          type: string
+          description: Start of the time window (HH:MM, 24-hour)
+          pattern: "^\\d{2}:\\d{2}$"
+          example: "17:00"
+        timeTo:
+          type: string
+          description: End of the time window (HH:MM, 24-hour); must be after timeFrom
+          pattern: "^\\d{2}:\\d{2}$"
+          example: "22:00"
+
+    PreferenceResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/Preference"
+
+    PreferencesListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Preference"
+
+    Preference:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: email
+        preferenceId:
+          type: string
+          format: uuid
+        facilityId:
+          type: string
+        dates:
+          type: array
+          items:
+            type: string
+            format: date
+        timeFrom:
+          type: string
+        timeTo:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "User not found"
