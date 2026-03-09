@@ -64,6 +64,10 @@ DAYS_AHEAD = int(os.environ.get("SCRAPER_DAYS_AHEAD", "14"))
 DYNAMODB_TABLE = os.environ.get("DYNAMODB_TABLE", "tennis-availability")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 
+# Circuit breaker: skip remaining dates for a facility after this many
+# consecutive fetch failures.
+CIRCUIT_BREAKER_THRESHOLD = 3
+
 # ---------------------------------------------------------------------------
 # DynamoDB helpers
 # ---------------------------------------------------------------------------
@@ -156,12 +160,29 @@ def lambda_handler(event: dict, context) -> dict:
 
     total_slots_fetched = 0
     fetch_errors = 0
+    facilities_skipped = []
 
     for facility_key, facility_id in FACILITIES.items():
         current_snapshot[facility_key] = {}
         previous_snapshot[facility_key] = {}
 
+        consecutive_failures = 0
+
         for date_str in date_strings:
+            # --- Circuit breaker: skip remaining dates if too many failures ---
+            if consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD:
+                _log("warning", "Circuit breaker tripped — skipping remaining dates",
+                     facility=facility_key,
+                     consecutive_failures=consecutive_failures,
+                     skipped_date=date_str)
+                if facility_key not in facilities_skipped:
+                    facilities_skipped.append(facility_key)
+                # Load previous snapshot to preserve existing data
+                prev_slots = load_snapshot(table, facility_key, date_str)
+                previous_snapshot[facility_key][date_str] = prev_slots
+                current_snapshot[facility_key][date_str] = prev_slots
+                continue
+
             slot_start = time.monotonic()
 
             # --- Load previous snapshot ---
@@ -171,10 +192,12 @@ def lambda_handler(event: dict, context) -> dict:
             # --- Fetch current availability ---
             try:
                 curr_slots = fetch_available_slots(facility_id, date_str)
+                consecutive_failures = 0  # reset on success
             except Exception as exc:
                 _log("warning", "Failed to fetch slots",
                      facility=facility_key, date=date_str, error=str(exc))
                 fetch_errors += 1
+                consecutive_failures += 1
                 # Keep previous snapshot so we don't wipe good data.
                 curr_slots = prev_slots
 
@@ -207,6 +230,7 @@ def lambda_handler(event: dict, context) -> dict:
          total_slots_fetched=total_slots_fetched,
          total_new_courts=total_new_courts,
          fetch_errors=fetch_errors,
+         facilities_skipped=facilities_skipped,
          duration_ms=total_duration_ms)
 
     return {
@@ -216,6 +240,7 @@ def lambda_handler(event: dict, context) -> dict:
             "total_slots_fetched": total_slots_fetched,
             "total_new_courts": total_new_courts,
             "fetch_errors": fetch_errors,
+            "facilities_skipped": facilities_skipped,
             "duration_ms": total_duration_ms,
             "facilities_checked": list(FACILITIES.keys()),
             "dates_checked": date_strings,

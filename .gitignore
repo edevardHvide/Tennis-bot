@@ -248,6 +248,7 @@ tmp/
 # AWS Lambda build artifacts
 *.zip
 lambda-layer/
+lambdas/*/package/
 
 # Node / Frontend
 node_modules/
