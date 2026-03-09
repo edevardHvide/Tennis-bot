@@ -1,0 +1,54 @@
+[
+  {
+    "TableName": "tennis-users",
+    "KeySchema": [
+      { "AttributeName": "userId", "KeyType": "HASH" }
+    ],
+    "AttributeDefinitions": [
+      { "AttributeName": "userId", "AttributeType": "S" }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "Comment": "Registered subscribers. userId = email address."
+  },
+  {
+    "TableName": "tennis-preferences",
+    "KeySchema": [
+      { "AttributeName": "userId", "KeyType": "HASH" },
+      { "AttributeName": "preferenceId", "KeyType": "RANGE" }
+    ],
+    "AttributeDefinitions": [
+      { "AttributeName": "userId", "AttributeType": "S" },
+      { "AttributeName": "preferenceId", "AttributeType": "S" }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "Comment": "Per-user alert preferences. Fields: facilityId, dates[], timeFrom, timeTo, active."
+  },
+  {
+    "TableName": "tennis-availability",
+    "KeySchema": [
+      { "AttributeName": "facilityId", "KeyType": "HASH" },
+      { "AttributeName": "date", "KeyType": "RANGE" }
+    ],
+    "AttributeDefinitions": [
+      { "AttributeName": "facilityId", "AttributeType": "S" },
+      { "AttributeName": "date", "AttributeType": "S" }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "Comment": "Cached scraper snapshot per facility+date. Stores slot map for diffing."
+  },
+  {
+    "TableName": "tennis-notifications",
+    "KeySchema": [
+      { "AttributeName": "notificationId", "KeyType": "HASH" }
+    ],
+    "AttributeDefinitions": [
+      { "AttributeName": "notificationId", "AttributeType": "S" }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "TimeToLiveSpecification": {
+      "Enabled": true,
+      "AttributeName": "ttl"
+    },
+    "Comment": "Sent notification history for deduplication. Items expire after 7 days (ttl = unix epoch)."
+  }
+]
