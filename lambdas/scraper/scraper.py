@@ -2,16 +2,29 @@
 Matchi.se availability scraper — no CLI dependencies.
 
 Ported from fetch_available_slots() in check_availability.py.
+
+Includes retry logic with exponential backoff for transient HTTP errors.
 """
+
+import logging
+import time
 
 import requests
 from bs4 import BeautifulSoup
 
+logger = logging.getLogger(__name__)
+
 MATCHI_SCHEDULE_URL = "https://www.matchi.se/book/schedule"
+
+MAX_RETRIES = 3
+BACKOFF_BASE = 1  # seconds
 
 
 def fetch_available_slots(facility_id: int, date_str: str) -> dict[str, list[str]]:
     """Fetch available slots for a specific facility and date.
+
+    Retries up to MAX_RETRIES times with exponential backoff (1s, 2s, 4s) on
+    HTTP errors or request timeouts.
 
     Args:
         facility_id: Matchi integer facility ID.
@@ -23,7 +36,7 @@ def fetch_available_slots(facility_id: int, date_str: str) -> dict[str, list[str
         available slots or when the page cannot be fetched.
 
     Raises:
-        requests.HTTPError: on a non-2xx HTTP response.
+        requests.RequestException: after all retry attempts are exhausted.
     """
     params = {
         "wl": "",
@@ -32,10 +45,29 @@ def fetch_available_slots(facility_id: int, date_str: str) -> dict[str, list[str
         "sport": "1",
     }
 
-    response = requests.get(MATCHI_SCHEDULE_URL, params=params, timeout=30)
-    response.raise_for_status()
-
-    return parse_slots_from_html(response.text)
+    last_exc: Exception | None = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.get(MATCHI_SCHEDULE_URL, params=params, timeout=30)
+            response.raise_for_status()
+            return parse_slots_from_html(response.text)
+        except (requests.RequestException, requests.Timeout) as exc:
+            last_exc = exc
+            if attempt < MAX_RETRIES - 1:
+                sleep_time = BACKOFF_BASE * (2 ** attempt)
+                logger.warning(
+                    "Fetch attempt %d/%d failed for facility %s date %s: %s. "
+                    "Retrying in %ds...",
+                    attempt + 1, MAX_RETRIES, facility_id, date_str,
+                    exc, sleep_time,
+                )
+                time.sleep(sleep_time)
+            else:
+                logger.error(
+                    "All %d fetch attempts failed for facility %s date %s: %s",
+                    MAX_RETRIES, facility_id, date_str, exc,
+                )
+    raise last_exc
 
 
 def parse_slots_from_html(html: str) -> dict[str, list[str]]:

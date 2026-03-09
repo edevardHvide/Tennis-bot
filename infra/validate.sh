@@ -48,6 +48,17 @@ for fn in tennis-scraper tennis-preferences tennis-notifications; do
     aws lambda get-function --function-name "$fn" --profile "$PROFILE" --region "$REGION"
 done
 
+# ── CloudWatch Alarms ─────────────────────────────────────────────────────────
+echo ""
+echo "CloudWatch alarms:"
+for fn in tennis-scraper tennis-preferences tennis-notifications; do
+  check "$fn error alarm exists" \
+    aws cloudwatch describe-alarms \
+      --alarm-name-prefix "$fn" \
+      --profile "$PROFILE" --region "$REGION" \
+      --query "MetricAlarms[0].AlarmName" --output text
+done
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
