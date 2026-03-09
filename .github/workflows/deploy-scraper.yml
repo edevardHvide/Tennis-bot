@@ -1,0 +1,116 @@
+name: Deploy Scraper Lambda
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+      ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check caller identity
+        run: aws sts get-caller-identity
+
+      - name: Create IAM execution role
+        run: |
+          if aws iam get-role --role-name tennis-scraper-role 2>/dev/null; then
+            echo "Role already exists, skipping creation"
+          else
+            echo "Creating IAM role..."
+            cat > /tmp/trust-policy.json << 'EOF'
+          {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": "lambda.amazonaws.com"},
+              "Action": "sts:AssumeRole"
+            }]
+          }
+          EOF
+            aws iam create-role \
+              --role-name tennis-scraper-role \
+              --assume-role-policy-document file:///tmp/trust-policy.json
+            aws iam attach-role-policy \
+              --role-name tennis-scraper-role \
+              --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+            aws iam attach-role-policy \
+              --role-name tennis-scraper-role \
+              --policy-arn arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+            echo "Waiting 10s for IAM propagation..."
+            sleep 10
+          fi
+
+      - name: Package scraper Lambda
+        run: |
+          mkdir -p build/scraper-pkg
+          pip install requests beautifulsoup4 -t build/scraper-pkg/ --quiet
+          cp lambdas/scraper/handler.py lambdas/scraper/scraper.py lambdas/scraper/diff.py build/scraper-pkg/
+          cp facilities.py build/scraper-pkg/
+          cd build/scraper-pkg && zip -qr ../scraper.zip .
+
+      - name: Deploy Lambda function
+        run: |
+          ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/tennis-scraper-role"
+          if aws lambda get-function --function-name tennis-scraper 2>/dev/null; then
+            echo "Lambda exists, updating code..."
+            aws lambda update-function-code \
+              --function-name tennis-scraper \
+              --zip-file fileb://build/scraper.zip
+          else
+            echo "Creating Lambda function..."
+            aws lambda create-function \
+              --function-name tennis-scraper \
+              --runtime python3.11 \
+              --handler handler.lambda_handler \
+              --role "$ROLE_ARN" \
+              --zip-file fileb://build/scraper.zip \
+              --timeout 120 \
+              --memory-size 256 \
+              --environment "Variables={DYNAMODB_TABLE=tennis-availability,AWS_REGION_NAME=${AWS_DEFAULT_REGION}}"
+          fi
+
+      - name: Test Lambda invocation
+        run: |
+          aws lambda invoke \
+            --function-name tennis-scraper \
+            --payload '{}' \
+            /tmp/scraper-output.json
+          echo "Lambda output:"
+          cat /tmp/scraper-output.json
+
+      - name: Create EventBridge schedule rule
+        run: |
+          LAMBDA_ARN="arn:aws:lambda:${AWS_DEFAULT_REGION}:${ACCOUNT_ID}:function:tennis-scraper"
+          RULE_ARN="arn:aws:events:${AWS_DEFAULT_REGION}:${ACCOUNT_ID}:rule/tennis-scraper-schedule"
+          if aws events describe-rule --name tennis-scraper-schedule 2>/dev/null; then
+            echo "EventBridge rule already exists"
+          else
+            echo "Creating EventBridge rule (DISABLED)..."
+            aws events put-rule \
+              --name tennis-scraper-schedule \
+              --schedule-expression "rate(5 minutes)" \
+              --state DISABLED \
+              --description "Triggers tennis scraper Lambda every 5 minutes"
+          fi
+          aws lambda add-permission \
+            --function-name tennis-scraper \
+            --statement-id eventbridge-invoke \
+            --action lambda:InvokeFunction \
+            --principal events.amazonaws.com \
+            --source-arn "$RULE_ARN" 2>/dev/null || echo "Permission already exists"
+          aws events put-targets \
+            --rule tennis-scraper-schedule \
+            --targets "Id=1,Arn=$LAMBDA_ARN"
+          echo "EventBridge rule created (DISABLED). Enable when ready."
