@@ -23,25 +23,18 @@ jobs:
       - name: Check caller identity
         run: aws sts get-caller-identity
 
-      - name: Create IAM execution role
+      - name: Create IAM execution role (may fail if no IAM permissions)
+        continue-on-error: true
+        id: create-role
         run: |
           if aws iam get-role --role-name tennis-scraper-role 2>/dev/null; then
-            echo "Role already exists, skipping creation"
+            echo "Role already exists"
+            echo "role_exists=true" >> $GITHUB_OUTPUT
           else
             echo "Creating IAM role..."
-            cat > /tmp/trust-policy.json << 'EOF'
-          {
-            "Version": "2012-10-17",
-            "Statement": [{
-              "Effect": "Allow",
-              "Principal": {"Service": "lambda.amazonaws.com"},
-              "Action": "sts:AssumeRole"
-            }]
-          }
-          EOF
             aws iam create-role \
               --role-name tennis-scraper-role \
-              --assume-role-policy-document file:///tmp/trust-policy.json
+              --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
             aws iam attach-role-policy \
               --role-name tennis-scraper-role \
               --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
@@ -50,9 +43,22 @@ jobs:
               --policy-arn arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
             echo "Waiting 10s for IAM propagation..."
             sleep 10
+            echo "role_exists=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Verify IAM role exists
+        id: verify-role
+        run: |
+          if aws iam get-role --role-name tennis-scraper-role 2>/dev/null; then
+            echo "role_ready=true" >> $GITHUB_OUTPUT
+          else
+            echo "::error::IAM role 'tennis-scraper-role' does not exist. Create it manually in AWS Console, then re-run this workflow."
+            echo "role_ready=false" >> $GITHUB_OUTPUT
+            exit 1
           fi
 
       - name: Package scraper Lambda
+        if: steps.verify-role.outputs.role_ready == 'true'
         run: |
           mkdir -p build/scraper-pkg
           pip install requests beautifulsoup4 -t build/scraper-pkg/ --quiet
@@ -61,6 +67,7 @@ jobs:
           cd build/scraper-pkg && zip -qr ../scraper.zip .
 
       - name: Deploy Lambda function
+        if: steps.verify-role.outputs.role_ready == 'true'
         run: |
           ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/tennis-scraper-role"
           if aws lambda get-function --function-name tennis-scraper 2>/dev/null; then
@@ -82,7 +89,10 @@ jobs:
           fi
 
       - name: Test Lambda invocation
+        if: steps.verify-role.outputs.role_ready == 'true'
         run: |
+          echo "Waiting 5s for Lambda to be ready..."
+          sleep 5
           aws lambda invoke \
             --function-name tennis-scraper \
             --payload '{}' \
@@ -91,6 +101,7 @@ jobs:
           cat /tmp/scraper-output.json
 
       - name: Create EventBridge schedule rule
+        if: steps.verify-role.outputs.role_ready == 'true'
         run: |
           LAMBDA_ARN="arn:aws:lambda:${AWS_DEFAULT_REGION}:${ACCOUNT_ID}:function:tennis-scraper"
           RULE_ARN="arn:aws:events:${AWS_DEFAULT_REGION}:${ACCOUNT_ID}:rule/tennis-scraper-schedule"
@@ -113,4 +124,4 @@ jobs:
           aws events put-targets \
             --rule tennis-scraper-schedule \
             --targets "Id=1,Arn=$LAMBDA_ARN"
-          echo "EventBridge rule created (DISABLED). Enable when ready."
+          echo "Done! EventBridge rule 'tennis-scraper-schedule' created (DISABLED)."
