@@ -747,8 +747,22 @@ def run_monitor(
     facility_filter: list[str] | None = None,
     once: bool = False,
     quiet: bool = False,
+    days_ahead: int | None = None,
 ):
-    """Run the main court availability monitoring loop."""
+    """Run the main court availability monitoring loop.
+
+    When *days_ahead* is provided the date window rolls forward automatically:
+    at the start of every poll iteration the date list is recomputed as
+    ``get_date_range(days_ahead)`` (always starting from today).  This ensures
+    that when Matchi opens a new booking day (typically exactly 7 days ahead)
+    the bot detects all newly available courts on that day and notifies the
+    user — without sending duplicate alerts, because the next poll finds the
+    same courts already present in ``previous_slots``.
+
+    When *days_ahead* is ``None`` the supplied *dates* list is used unchanged
+    for every poll (fixed-window mode, e.g. when the caller passed explicit
+    ``--dates`` or ``--start-date``).
+    """
     # Initialize previous state
     previous_slots = {}
     error_count = 0
@@ -758,6 +772,12 @@ def run_monitor(
 
     while True:
         try:
+            # In rolling-window mode recompute the date range each iteration so
+            # that new dates entering the booking horizon (e.g. exactly 7 days
+            # ahead) are treated as brand-new and trigger a notification.
+            if days_ahead is not None:
+                dates = get_date_range(days_ahead)
+
             current_slots = collect_all_slots(dates, facility_filter)
             # Apply time filtering (if any)
             if between:
@@ -1032,9 +1052,16 @@ For more information, visit: https://github.com/your-username/tennis-bot
 
     # Route to appropriate function
     if args.command == "monitor":
-        # Build dates to monitor
+        # Build dates to monitor.
+        # rolling_days_ahead is set when the window should advance with time
+        # (no explicit --dates or --start-date).  In that case run_monitor()
+        # recomputes the date list from today on every poll so that courts
+        # that "drop" for a newly-opened day (typically 7 days ahead) are
+        # detected and notified without sending duplicate alerts.
         dates: list[datetime.date]
+        rolling_days_ahead: int | None = None
         if getattr(args, "dates", None):
+            # Explicit date list — fixed, never rolls
             dates = parse_dates_list(args.dates)
         else:
             start_date = None
@@ -1048,6 +1075,9 @@ For more information, visit: https://github.com/your-username/tennis-bot
                     ) from exc
             days_ahead = getattr(args, "days_ahead", 2)
             dates = get_date_range(days_ahead=days_ahead, start_date=start_date)
+            # Only enable rolling mode when no explicit anchor date was given
+            if start_date is None:
+                rolling_days_ahead = days_ahead
 
         # Build optional time filter
         between = None
@@ -1074,7 +1104,15 @@ For more information, visit: https://github.com/your-username/tennis-bot
         once = getattr(args, "once", False)
         quiet = getattr(args, "quiet", False)
 
-        run_monitor(dates, between, interval_seconds, facility_filter, once, quiet)
+        run_monitor(
+            dates,
+            between,
+            interval_seconds,
+            facility_filter,
+            once,
+            quiet,
+            days_ahead=rolling_days_ahead,
+        )
     elif args.command == "test-notifications":
         test_notifications()
     elif args.command == "test-email":
