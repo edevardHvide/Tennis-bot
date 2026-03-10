@@ -118,6 +118,8 @@ deploy-newsletter: package-newsletter
 
 # ── Frontend ──────────────────────────────────────────────────────────────────
 
+CLOUDFRONT_DIST_ID = E2OWR5DUA704T3
+
 deploy-frontend:
 	@echo ">> Building frontend..."
 	@cd frontend && npm run build
@@ -125,7 +127,13 @@ deploy-frontend:
 	@aws s3 sync frontend/dist s3://$(S3_FRONTEND_BUCKET) \
 		--delete \
 		--profile $(PROFILE) --region $(REGION)
-	@echo "   Done: http://$(S3_FRONTEND_BUCKET).s3-website.$(REGION).amazonaws.com"
+	@echo ">> Invalidating CloudFront cache..."
+	@aws cloudfront create-invalidation \
+		--distribution-id $(CLOUDFRONT_DIST_ID) \
+		--paths "/*" \
+		--profile $(PROFILE) \
+		--query 'Invalidation.Status' --output text
+	@echo "   Done: https://availabilitymonitor.club"
 
 # ── Deploy all ────────────────────────────────────────────────────────────────
 

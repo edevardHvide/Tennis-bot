@@ -42,7 +42,10 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div
+      className="min-h-screen flex items-center justify-center px-4 bg-cover bg-center"
+      style={{ backgroundImage: "url('/tennis-court.jpg')" }}
+    >
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
@@ -51,11 +54,11 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
               <path strokeWidth="2" strokeLinecap="round" d="M8 12l2 2 4-4" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Tennis Bot</h1>
-          <p className="mt-2 text-gray-600">Get alerts when tennis courts become available</p>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Availability Monitor</h1>
+          <p className="mt-2 text-white drop-shadow">Get alerts when tennis/padel courts become available</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 space-y-5">
+        <form onSubmit={handleSubmit} className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200 p-8 space-y-5">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Email
