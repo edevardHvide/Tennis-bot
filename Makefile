@@ -7,7 +7,7 @@ PREFERENCES_FN = tennis-preferences
 NOTIFICATIONS_FN = tennis-notifications
 NEWSLETTER_FN  = tennis-newsletter
 
-S3_FRONTEND_BUCKET = tennis-bot-frontend-$(ACCOUNT)
+S3_FRONTEND_BUCKET = tennis-bot-frontend
 
 .PHONY: help install deploy-all deploy-scraper deploy-preferences deploy-notifications \
         deploy-newsletter deploy-frontend package-scraper package-preferences \
