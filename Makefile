@@ -5,12 +5,13 @@ ACCOUNT   ?= 605893375372
 SCRAPER_FN    = tennis-scraper
 PREFERENCES_FN = tennis-preferences
 NOTIFICATIONS_FN = tennis-notifications
+NEWSLETTER_FN  = tennis-newsletter
 
 S3_FRONTEND_BUCKET = tennis-bot-frontend-$(ACCOUNT)
 
 .PHONY: help install deploy-all deploy-scraper deploy-preferences deploy-notifications \
-        deploy-frontend package-scraper package-preferences package-notifications \
-        deploy-dynamo validate destroy
+        deploy-newsletter deploy-frontend package-scraper package-preferences \
+        package-notifications package-newsletter deploy-dynamo validate destroy
 
 # ── Help ─────────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,15 @@ package-notifications:
 	@cd lambdas/notifications/package && zip -qr ../../../build/notifications.zip .
 	@echo "   build/notifications.zip ready"
 
+package-newsletter:
+	@echo ">> Packaging newsletter Lambda..."
+	@mkdir -p build
+	@cd lambdas/newsletter && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
+	@cd lambdas/newsletter && cp -r . ./package/ 2>/dev/null || true
+	@cp lambdas/notifications/matcher.py lambdas/newsletter/package/
+	@cd lambdas/newsletter/package && zip -qr ../../../build/newsletter.zip .
+	@echo "   build/newsletter.zip ready"
+
 # ── Lambda deploy ─────────────────────────────────────────────────────────────
 
 deploy-scraper: package-scraper
@@ -94,6 +104,14 @@ deploy-notifications: package-notifications
 		--profile $(PROFILE) --region $(REGION) \
 		--query 'LastUpdateStatus' --output text
 
+deploy-newsletter: package-newsletter
+	@echo ">> Deploying newsletter Lambda..."
+	@aws lambda update-function-code \
+		--function-name $(NEWSLETTER_FN) \
+		--zip-file fileb://build/newsletter.zip \
+		--profile $(PROFILE) --region $(REGION) \
+		--query 'LastUpdateStatus' --output text
+
 # ── Frontend ──────────────────────────────────────────────────────────────────
 
 deploy-frontend:
@@ -107,7 +125,7 @@ deploy-frontend:
 
 # ── Deploy all ────────────────────────────────────────────────────────────────
 
-deploy-all: deploy-dynamo deploy-scraper deploy-preferences deploy-notifications deploy-frontend
+deploy-all: deploy-dynamo deploy-scraper deploy-preferences deploy-notifications deploy-newsletter deploy-frontend
 	@echo ""
 	@echo "All components deployed."
 
