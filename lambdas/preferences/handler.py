@@ -35,6 +35,10 @@ PREFS_TABLE = os.environ.get("PREFS_TABLE", "tennis-preferences")
 VALID_FACILITY_IDS = set(facilities.keys())
 VALID_SPORTS = {"tennis", "padel"}
 VALID_COURT_TYPES = {"double", "single"}
+VALID_DAY_NAMES = {
+    "monday", "tuesday", "wednesday", "thursday",
+    "friday", "saturday", "sunday",
+}
 
 # ---------------------------------------------------------------------------
 # DynamoDB resource (module-level for connection reuse across invocations)
@@ -94,7 +98,6 @@ def _error(message, status=400):
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _TIME_RE = re.compile(r"^\d{2}:\d{2}$")
-_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _validate_email(value: str) -> str | None:
@@ -113,13 +116,13 @@ def _validate_time(value: str, field: str) -> str | None:
     return None
 
 
-def _validate_date(value: str) -> str | None:
-    if not _DATE_RE.match(value):
-        return f"Date must be in YYYY-MM-DD format, got {value!r}"
-    try:
-        datetime.strptime(value, "%Y-%m-%d")
-    except ValueError:
-        return f"Invalid date: {value!r}"
+def _validate_day_name(value: str) -> str | None:
+    """Return error message or None if value is a valid day-of-week name."""
+    if value.lower() not in VALID_DAY_NAMES:
+        return (
+            f"Invalid day name: {value!r}; "
+            f"must be one of {sorted(VALID_DAY_NAMES)}"
+        )
     return None
 
 
@@ -168,7 +171,7 @@ def _validate_preference_body(body: dict) -> list[str]:
         errors.append("dates must be a non-empty array")
     else:
         for d in dates:
-            err = _validate_date(d)
+            err = _validate_day_name(d)
             if err:
                 errors.append(err)
 
@@ -273,7 +276,7 @@ def create_preference(event: dict, user_id: str) -> dict:
         "preferenceId": preference_id,
         "facilityId": body["facilityId"],
         "sport": sport,
-        "dates": body["dates"],
+        "dates": [d.lower() for d in body["dates"]],
         "timeFrom": body["timeFrom"],
         "timeTo": body["timeTo"],
         "createdAt": now,
@@ -316,7 +319,7 @@ def update_preference(event: dict, user_id: str, preference_id: str) -> dict:
         "preferenceId": preference_id,
         "facilityId": body["facilityId"],
         "sport": sport,
-        "dates": body["dates"],
+        "dates": [d.lower() for d in body["dates"]],
         "timeFrom": body["timeFrom"],
         "timeTo": body["timeTo"],
         "createdAt": existing["Item"]["createdAt"],

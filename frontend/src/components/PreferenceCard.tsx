@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Preference } from '../types';
-import { getFacilityDisplayName } from '../types';
+import { getFacilityDisplayName, formatDays } from '../types';
 
 interface PreferenceCardProps {
   preference: Preference;
@@ -21,8 +21,8 @@ export default function PreferenceCard({ preference, onEdit, onDelete }: Prefere
     }
   };
 
-  const sortedDates = [...preference.dates].sort();
   const sport = preference.sport ?? 'tennis';
+  const daysLabel = formatDays(preference.dates);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
@@ -82,17 +82,16 @@ export default function PreferenceCard({ preference, onEdit, onDelete }: Prefere
       </div>
 
       <div>
-        <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Dates</p>
-        <div className="flex flex-wrap gap-1.5">
-          {sortedDates.map((date) => (
-            <span
-              key={date}
-              className="inline-block bg-green-50 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full border border-green-200"
-            >
-              {date}
-            </span>
-          ))}
-        </div>
+        <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Days</p>
+        <span
+          className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${
+            sport === 'tennis'
+              ? 'bg-green-50 text-green-700 border-green-200'
+              : 'bg-blue-50 text-blue-700 border-blue-200'
+          }`}
+        >
+          {daysLabel}
+        </span>
       </div>
     </div>
   );

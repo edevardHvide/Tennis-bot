@@ -92,7 +92,7 @@ python scripts/migrate_preferences_sport.py --profile tennis-bot [--dry-run]
 | Table | PK | SK | Notes |
 |-------|----|----|-------|
 | tennis-users | userId | — | User registration |
-| tennis-preferences | userId | preferenceId | Has `sport` (tennis/padel) and optional `courtType` (double/single) |
+| tennis-preferences | userId | preferenceId | Has `sport` (tennis/padel), `dates` (list of day names like `["monday", "wednesday"]`), and optional `courtType` (double/single) |
 | tennis-availability | facilityId | date | Scraper snapshots. PK uses composite key: `facility#sport` (e.g. `"ota#padel"`) |
 | tennis-notifications | notificationId | — | Dedup with 24h TTL. Hash includes sport for independent dedup |
 
@@ -100,7 +100,7 @@ python scripts/migrate_preferences_sport.py --profile tennis-bot [--dry-run]
 
 - **DynamoDB availability PK:** `"frogner#tennis"`, `"ota#padel"` — encodes sport into facilityId
 - **Diff keys:** Same composite format, flows through scraper → notifications pipeline
-- **Preferences:** Have `sport` field (default `"tennis"`) and optional `courtType` field
+- **Preferences:** Have `sport` field (default `"tennis"`), `dates` field (list of lowercase day-of-week names, e.g. `["monday", "friday"]`), and optional `courtType` field
 - **Court type filtering (padel):** `"single"` matches courts with "single" in name; `"double"` matches courts WITHOUT "single" in name
 - **Booking URLs:** Use `sport=1` for tennis, `sport=5` for padel
 

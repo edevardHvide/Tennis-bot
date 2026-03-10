@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { Preference, PreferenceFormData, Sport, CourtType } from '../types';
-import { FACILITIES } from '../types';
+import type { Preference, PreferenceFormData, Sport, CourtType, DayOfWeek } from '../types';
+import { FACILITIES, ALL_DAYS, WEEKDAYS, WEEKENDS, DAY_SHORT_LABELS } from '../types';
 
 interface PreferenceFormProps {
   editing: Preference | null;
@@ -24,9 +24,12 @@ const TIME_OPTIONS = generateTimeOptions();
 export default function PreferenceForm({ editing, onSubmit, onCancel }: PreferenceFormProps) {
   const [sport, setSport] = useState<Sport>(editing?.sport ?? 'tennis');
   const [courtType, setCourtType] = useState<CourtType | undefined>(editing?.courtType);
-  const [facilityId, setFacilityId] = useState(editing?.facilityId ?? '');
-  const [dates, setDates] = useState<string[]>(editing?.dates ?? []);
-  const [dateInput, setDateInput] = useState('');
+  const [facilityIds, setFacilityIds] = useState<string[]>(
+    editing?.facilityId ? [editing.facilityId] : []
+  );
+  const [days, setDays] = useState<DayOfWeek[]>(
+    (editing?.dates as DayOfWeek[]) ?? []
+  );
   const [timeFrom, setTimeFrom] = useState(editing?.timeFrom ?? '');
   const [timeTo, setTimeTo] = useState(editing?.timeTo ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -39,8 +42,8 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
     if (editing) {
       setSport(editing.sport ?? 'tennis');
       setCourtType(editing.courtType);
-      setFacilityId(editing.facilityId);
-      setDates([...editing.dates]);
+      setFacilityIds(editing.facilityId ? [editing.facilityId] : []);
+      setDays((editing.dates as DayOfWeek[]) ?? []);
       setTimeFrom(editing.timeFrom);
       setTimeTo(editing.timeTo);
     }
@@ -48,48 +51,83 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
 
   const handleSportChange = (newSport: Sport) => {
     setSport(newSport);
-    // Clear court type when switching to tennis
     if (newSport === 'tennis') {
       setCourtType(undefined);
     }
-    // Reset facility if the current one doesn't support the new sport
-    const facilitySupported = FACILITIES.find(
-      (f) => f.id === facilityId && f.sports.includes(newSport)
+    // Remove facilities that don't support the new sport
+    setFacilityIds((prev) =>
+      prev.filter((id) => {
+        const facility = FACILITIES.find((f) => f.id === id);
+        return facility?.sports.includes(newSport);
+      })
     );
-    if (!facilitySupported) {
-      setFacilityId('');
-    }
   };
 
-  const addDate = () => {
-    if (!dateInput) return;
-    if (dates.includes(dateInput)) {
-      setErrors((prev) => ({ ...prev, dates: 'Date already added.' }));
-      return;
-    }
-    setDates((prev) => [...prev, dateInput].sort());
-    setDateInput('');
+  const toggleDay = (day: DayOfWeek) => {
+    setDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
     setErrors((prev) => {
       const { dates: _, ...rest } = prev;
       return rest;
     });
   };
 
-  const removeDate = (date: string) => {
-    setDates((prev) => prev.filter((d) => d !== date));
+  const selectDayGroup = (group: DayOfWeek[]) => {
+    setDays((prev) => {
+      const allSelected = group.every((d) => prev.includes(d));
+      if (allSelected) {
+        // Deselect the group
+        return prev.filter((d) => !group.includes(d));
+      }
+      // Add all from group that aren't already selected
+      const newDays = new Set([...prev, ...group]);
+      return ALL_DAYS.filter((d) => newDays.has(d));
+    });
+    setErrors((prev) => {
+      const { dates: _, ...rest } = prev;
+      return rest;
+    });
+  };
+
+  const selectAllDays = () => {
+    const allSelected = ALL_DAYS.every((d) => days.includes(d));
+    setDays(allSelected ? [] : [...ALL_DAYS]);
+    setErrors((prev) => {
+      const { dates: _, ...rest } = prev;
+      return rest;
+    });
+  };
+
+  const toggleFacility = (id: string) => {
+    if (editing) {
+      // When editing, only allow single facility (since each preference is one facility)
+      setFacilityIds([id]);
+    } else {
+      setFacilityIds((prev) =>
+        prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+      );
+    }
+    setErrors((prev) => {
+      const { facilityId: _, ...rest } = prev;
+      return rest;
+    });
   };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!facilityId) newErrors.facilityId = 'Please select a facility.';
+    if (facilityIds.length === 0) newErrors.facilityId = 'Please select at least one facility.';
     else {
-      const facility = FACILITIES.find((f) => f.id === facilityId);
-      if (facility && !facility.sports.includes(sport)) {
-        newErrors.facilityId = 'Selected facility does not support this sport.';
+      const invalidFacility = facilityIds.find((id) => {
+        const facility = FACILITIES.find((f) => f.id === id);
+        return facility && !facility.sports.includes(sport);
+      });
+      if (invalidFacility) {
+        newErrors.facilityId = 'A selected facility does not support this sport.';
       }
     }
-    if (dates.length === 0) newErrors.dates = 'Add at least one date.';
+    if (days.length === 0) newErrors.dates = 'Select at least one day.';
     if (!timeFrom) newErrors.timeFrom = 'Select a start time.';
     if (!timeTo) newErrors.timeTo = 'Select an end time.';
     if (timeFrom && timeTo && timeFrom >= timeTo) {
@@ -107,9 +145,13 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
 
     setLoading(true);
     try {
+      // Sort days in canonical order
+      const sortedDays = ALL_DAYS.filter((d) => days.includes(d));
+
       await onSubmit({
-        facilityId,
-        dates,
+        facilityId: facilityIds[0],
+        facilityIds,
+        dates: sortedDays,
         timeFrom,
         timeTo,
         sport,
@@ -121,6 +163,8 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
       setLoading(false);
     }
   };
+
+  const accentColor = sport === 'tennis' ? 'green' : 'blue';
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -209,77 +253,120 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
           </div>
         )}
 
-        {/* Facility */}
+        {/* Facilities (checkboxes) */}
         <div>
-          <label htmlFor="facility" className="block text-sm font-medium text-gray-700 mb-1">
-            Facility
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {editing ? 'Facility' : 'Facilities'}
           </label>
-          <select
-            id="facility"
-            value={facilityId}
-            onChange={(e) => setFacilityId(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white"
-            disabled={loading}
-          >
-            <option value="">Select a facility...</option>
+          <div className="space-y-2">
             {filteredFacilities.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.displayName}
-              </option>
+              <label
+                key={f.id}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border cursor-pointer transition-colors ${
+                  facilityIds.includes(f.id)
+                    ? accentColor === 'green'
+                      ? 'bg-green-50 border-green-300'
+                      : 'bg-blue-50 border-blue-300'
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <input
+                  type={editing ? 'radio' : 'checkbox'}
+                  checked={facilityIds.includes(f.id)}
+                  onChange={() => toggleFacility(f.id)}
+                  disabled={loading}
+                  className={`h-4 w-4 rounded ${
+                    accentColor === 'green'
+                      ? 'text-green-600 focus:ring-green-500'
+                      : 'text-blue-600 focus:ring-blue-500'
+                  } border-gray-300`}
+                />
+                <span className="text-sm font-medium text-gray-800">{f.displayName}</span>
+              </label>
             ))}
-          </select>
+          </div>
+          {!editing && facilityIds.length > 1 && (
+            <p className="mt-1.5 text-xs text-gray-500">
+              One preference will be created per facility.
+            </p>
+          )}
           {errors.facilityId && (
             <p className="mt-1 text-sm text-red-600">{errors.facilityId}</p>
           )}
         </div>
 
-        {/* Dates */}
+        {/* Days of Week */}
         <div>
-          <label htmlFor="date-input" className="block text-sm font-medium text-gray-700 mb-1">
-            Dates
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Days
           </label>
-          <div className="flex gap-2">
-            <input
-              id="date-input"
-              type="date"
-              value={dateInput}
-              onChange={(e) => setDateInput(e.target.value)}
-              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-              disabled={loading}
-            />
+          {/* Quick-select buttons */}
+          <div className="flex gap-2 mb-2">
             <button
               type="button"
-              onClick={addDate}
-              disabled={loading || !dateInput}
-              className="px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors"
+              onClick={() => selectDayGroup(WEEKDAYS)}
+              disabled={loading}
+              className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${
+                WEEKDAYS.every((d) => days.includes(d))
+                  ? accentColor === 'green'
+                    ? 'bg-green-100 text-green-700 border-green-300'
+                    : 'bg-blue-100 text-blue-700 border-blue-300'
+                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+              }`}
             >
-              Add
+              Weekdays
             </button>
+            <button
+              type="button"
+              onClick={() => selectDayGroup(WEEKENDS)}
+              disabled={loading}
+              className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${
+                WEEKENDS.every((d) => days.includes(d))
+                  ? accentColor === 'green'
+                    ? 'bg-green-100 text-green-700 border-green-300'
+                    : 'bg-blue-100 text-blue-700 border-blue-300'
+                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              Weekends
+            </button>
+            <button
+              type="button"
+              onClick={selectAllDays}
+              disabled={loading}
+              className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${
+                ALL_DAYS.every((d) => days.includes(d))
+                  ? accentColor === 'green'
+                    ? 'bg-green-100 text-green-700 border-green-300'
+                    : 'bg-blue-100 text-blue-700 border-blue-300'
+                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              All
+            </button>
+          </div>
+          {/* Day toggle buttons */}
+          <div className="flex flex-wrap gap-1.5">
+            {ALL_DAYS.map((day) => (
+              <button
+                key={day}
+                type="button"
+                onClick={() => toggleDay(day)}
+                disabled={loading}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  days.includes(day)
+                    ? accentColor === 'green'
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {DAY_SHORT_LABELS[day]}
+              </button>
+            ))}
           </div>
           {errors.dates && (
             <p className="mt-1 text-sm text-red-600">{errors.dates}</p>
-          )}
-          {dates.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {dates.map((date) => (
-                <span
-                  key={date}
-                  className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-sm font-medium px-3 py-1 rounded-full border border-green-200"
-                >
-                  {date}
-                  <button
-                    type="button"
-                    onClick={() => removeDate(date)}
-                    className="text-green-500 hover:text-red-500 transition-colors"
-                    disabled={loading}
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </span>
-              ))}
-            </div>
           )}
         </div>
 
@@ -293,7 +380,11 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
               id="time-from"
               value={timeFrom}
               onChange={(e) => setTimeFrom(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white"
+              className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 ${
+                accentColor === 'green'
+                  ? 'focus:ring-green-500 focus:border-green-500'
+                  : 'focus:ring-blue-500 focus:border-blue-500'
+              } outline-none bg-white`}
               disabled={loading}
             >
               <option value="">Start time...</option>
@@ -315,7 +406,11 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
               id="time-to"
               value={timeTo}
               onChange={(e) => setTimeTo(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white"
+              className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 ${
+                accentColor === 'green'
+                  ? 'focus:ring-green-500 focus:border-green-500'
+                  : 'focus:ring-blue-500 focus:border-blue-500'
+              } outline-none bg-white`}
               disabled={loading}
             >
               <option value="">End time...</option>
@@ -342,7 +437,11 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center"
+            className={`flex-1 ${
+              accentColor === 'green'
+                ? 'bg-green-600 hover:bg-green-700 disabled:bg-green-400'
+                : 'bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400'
+            } text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center`}
           >
             {loading ? (
               <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
@@ -351,6 +450,8 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
               </svg>
             ) : editing ? (
               'Update Preference'
+            ) : facilityIds.length > 1 ? (
+              `Add ${facilityIds.length} Preferences`
             ) : (
               'Add Preference'
             )}

@@ -158,10 +158,11 @@ def _add_preference(
     dynamo_resource,
     user_id: str,
     preference_id: str,
-    facility_id: str = "ota#tennis",
+    facility_id: str = "ota",
     days: list[str] | None = None,
     time_from: str = "17:00",
     time_to: str = "22:00",
+    sport: str = "tennis",
 ) -> None:
     table = dynamo_resource.Table(PREFS_TABLE)
     table.put_item(
@@ -169,9 +170,10 @@ def _add_preference(
             "userId": user_id,
             "preferenceId": preference_id,
             "facilityId": facility_id,
-            "days": days or ["monday"],
+            "dates": days or ["monday"],
             "timeFrom": time_from,
             "timeTo": time_to,
+            "sport": sport,
         }
     )
 
@@ -239,7 +241,7 @@ class TestHandler:
         _add_user(dynamo, "alice@test.com")
         _add_preference(
             dynamo, "alice@test.com", "p1",
-            facility_id="ota#tennis", days=["monday"],
+            facility_id="ota", days=["monday"],
             time_from="17:00", time_to="22:00",
         )
         _seed_availability(dynamo, "ota#tennis", "2026-03-16", {
@@ -258,7 +260,7 @@ class TestHandler:
         _add_user(dynamo, "alice@test.com")
         _add_preference(
             dynamo, "alice@test.com", "p1",
-            facility_id="ota#tennis", days=["monday"],
+            facility_id="ota", days=["monday"],
             time_from="17:00", time_to="22:00",
         )
         _seed_availability(dynamo, "ota#tennis", "2026-03-16", {
@@ -277,7 +279,7 @@ class TestHandler:
         _add_user(dynamo, "alice@test.com")
         _add_preference(
             dynamo, "alice@test.com", "p1",
-            facility_id="ota#tennis", days=["friday"],
+            facility_id="ota", days=["friday"],
             time_from="17:00", time_to="22:00",
         )
         # 2026-03-16 is Monday, preference is Friday only
@@ -302,9 +304,9 @@ class TestHandler:
         _add_user(dynamo, "alice@test.com")
         _add_user(dynamo, "bob@test.com")
         _add_preference(dynamo, "alice@test.com", "p1",
-                        facility_id="ota#tennis", days=["monday"])
+                        facility_id="ota", days=["monday"])
         _add_preference(dynamo, "bob@test.com", "p2",
-                        facility_id="ota#tennis", days=["monday"])
+                        facility_id="ota", days=["monday"])
         _seed_availability(dynamo, "ota#tennis", "2026-03-16", {
             "17:00-18:00": ["Tennis 1"],
         })
@@ -321,9 +323,9 @@ class TestHandler:
         _add_user(dynamo, "alice@test.com")
         _add_user(dynamo, "bob@test.com")
         _add_preference(dynamo, "alice@test.com", "p1",
-                        facility_id="ota#tennis", days=["monday"])
+                        facility_id="ota", days=["monday"])
         _add_preference(dynamo, "bob@test.com", "p2",
-                        facility_id="ota#tennis", days=["monday"])
+                        facility_id="ota", days=["monday"])
         _seed_availability(dynamo, "ota#tennis", "2026-03-16", {
             "17:00-18:00": ["Tennis 1"],
         })
@@ -340,7 +342,7 @@ class TestHandler:
             "17:00-18:00": ["Tennis 1"],
         })
         _add_preference(dynamo, "alice@test.com", "p1",
-                        facility_id="ota#tennis", days=["monday"])
+                        facility_id="ota", days=["monday"])
 
         response = h.lambda_handler({}, None)
         assert response["summary"]["week_start"] == "2026-03-16"

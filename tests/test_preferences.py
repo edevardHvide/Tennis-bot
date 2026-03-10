@@ -125,7 +125,7 @@ def _register_user(user_id="alice@example.com", name="Alice"):
 def _valid_pref_body():
     return {
         "facilityId": "frogner",
-        "dates": ["2026-06-01", "2026-06-07"],
+        "dates": ["monday", "sunday"],
         "timeFrom": "17:00",
         "timeTo": "22:00",
     }
@@ -291,7 +291,7 @@ class TestCreatePreference:
         assert response["statusCode"] == 201
         data = _body(response)["data"]
         assert data["facilityId"] == "frogner"
-        assert data["dates"] == ["2026-06-01", "2026-06-07"]
+        assert data["dates"] == ["monday", "sunday"]
         assert data["timeFrom"] == "17:00"
         assert data["timeTo"] == "22:00"
         assert "preferenceId" in data
@@ -328,11 +328,11 @@ class TestCreatePreference:
         )
         assert response["statusCode"] == 400
 
-    def test_invalid_date_format_returns_400(self, dynamo):
+    def test_invalid_day_name_returns_400(self, dynamo):
         import handler as h
 
         _register_user()
-        body = {**_valid_pref_body(), "dates": ["06/01/2026"]}
+        body = {**_valid_pref_body(), "dates": ["funday"]}
         response = h.lambda_handler(
             _event(
                 "POST",
@@ -343,6 +343,62 @@ class TestCreatePreference:
             None,
         )
         assert response["statusCode"] == 400
+        assert "Invalid day name" in _body(response)["error"]
+
+    def test_old_date_format_returns_400(self, dynamo):
+        """YYYY-MM-DD format should no longer be accepted."""
+        import handler as h
+
+        _register_user()
+        body = {**_valid_pref_body(), "dates": ["2026-06-01"]}
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 400
+
+    def test_valid_day_names_accepted(self, dynamo):
+        """All seven day names should be accepted."""
+        import handler as h
+
+        _register_user()
+        all_days = ["monday", "tuesday", "wednesday", "thursday",
+                     "friday", "saturday", "sunday"]
+        body = {**_valid_pref_body(), "dates": all_days}
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 201
+        assert _body(response)["data"]["dates"] == all_days
+
+    def test_day_names_stored_lowercase(self, dynamo):
+        """Day names should be stored in lowercase regardless of input case."""
+        import handler as h
+
+        _register_user()
+        body = {**_valid_pref_body(), "dates": ["Monday", "FRIDAY"]}
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 201
+        assert _body(response)["data"]["dates"] == ["monday", "friday"]
 
     def test_timefrom_after_timeto_returns_400(self, dynamo):
         import handler as h
@@ -697,7 +753,7 @@ class TestUpdatePreference:
         pref_id = self._create_pref()
         updated_body = {
             "facilityId": "ota",
-            "dates": ["2026-07-01"],
+            "dates": ["wednesday"],
             "timeFrom": "09:00",
             "timeTo": "11:00",
         }
@@ -716,7 +772,7 @@ class TestUpdatePreference:
         assert response["statusCode"] == 200
         data = _body(response)["data"]
         assert data["facilityId"] == "ota"
-        assert data["dates"] == ["2026-07-01"]
+        assert data["dates"] == ["wednesday"]
         assert data["timeFrom"] == "09:00"
         assert data["timeTo"] == "11:00"
 

@@ -3,10 +3,12 @@ Preference matching — compare scraper diff against user preferences.
 
 A court in the diff matches a preference when:
   1. The composite key (facilityId#sport) matches.
-  2. The date string appears in the preference's date list.
+  2. The day-of-week for the diff date is in the preference's day list.
   3. The slot start time falls within [timeFrom, timeTo).
   4. If courtType is set, the court name matches the filter.
 """
+
+from datetime import datetime
 
 from facilities import get_matchi_id, get_display_name, SPORT_CODES
 
@@ -51,8 +53,9 @@ def match_preferences(
         diff: composite_key -> date_str -> time_slot -> [court_name]
               where composite_key is "facilityId#sport" (e.g. "ota#padel").
         preferences: list of preference dicts from DynamoDB, each with:
-            userId, preferenceId, facilityId, dates (list of YYYY-MM-DD),
-            timeFrom, timeTo, sport (optional, defaults to "tennis"),
+            userId, preferenceId, facilityId, dates (list of day names,
+            e.g. ["monday", "wednesday"]), timeFrom, timeTo,
+            sport (optional, defaults to "tennis"),
             courtType (optional).
 
     Returns:
@@ -96,9 +99,16 @@ def match_preferences(
         if not facility_diff:
             continue
 
-        for date_str in pref_dates:
-            date_diff = facility_diff.get(date_str)
-            if not date_diff:
+        # Iterate over diff dates and check if the day-of-week matches
+        for date_str, date_diff in facility_diff.items():
+            # Convert diff date (YYYY-MM-DD) to a day-of-week name
+            try:
+                day_name = datetime.strptime(date_str, "%Y-%m-%d").strftime("%A").lower()
+            except ValueError:
+                # Malformed date in diff — skip safely
+                continue
+
+            if day_name not in pref_dates:
                 continue
 
             matched_courts: list[dict] = []

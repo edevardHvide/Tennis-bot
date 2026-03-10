@@ -54,10 +54,16 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
   };
 
   const handleFormSubmit = async (data: PreferenceFormData) => {
+    // Strip facilityIds (form-only field) before sending to API
+    const { facilityIds, ...apiData } = data;
     if (editing) {
-      await updatePreference(userId, editing.preferenceId, data);
+      await updatePreference(userId, editing.preferenceId, apiData);
     } else {
-      await createPreference(userId, data);
+      // Batch creation: create one preference per facility
+      const facilities = facilityIds ?? [data.facilityId];
+      for (const facilityId of facilities) {
+        await createPreference(userId, { ...apiData, facilityId });
+      }
     }
     setShowForm(false);
     setEditing(null);

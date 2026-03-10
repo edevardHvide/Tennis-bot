@@ -147,7 +147,7 @@ def _add_preference(
         "userId": user_id,
         "preferenceId": preference_id,
         "facilityId": facility_id,
-        "dates": dates or ["2026-06-01"],
+        "dates": dates or ["monday"],  # 2026-06-01 is a Monday
         "timeFrom": time_from,
         "timeTo": time_to,
         "sport": sport,
@@ -188,14 +188,14 @@ class TestMatcher:
     def test_facility_match(self):
         from matcher import match_preferences
 
-        diff = _sample_diff()
+        diff = _sample_diff()  # date=2026-06-01 is Monday
         prefs = [
             {
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
                 "sport": "tennis",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -215,7 +215,7 @@ class TestMatcher:
                 "preferenceId": "p1",
                 "facilityId": "frogner",
                 "sport": "tennis",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -234,7 +234,7 @@ class TestMatcher:
                 "preferenceId": "p1",
                 "facilityId": "ota",
                 "sport": "tennis",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -246,14 +246,14 @@ class TestMatcher:
         """Padel preference should match padel diff."""
         from matcher import match_preferences
 
-        diff = _sample_diff(facility="ota", sport="padel")
+        diff = _sample_diff(facility="ota", sport="padel")  # 2026-06-01 = Monday
         prefs = [
             {
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "ota",
                 "sport": "padel",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -273,7 +273,7 @@ class TestMatcher:
                 "preferenceId": "p1",
                 "facilityId": "frogner",
                 # no sport field — should default to tennis
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -282,9 +282,11 @@ class TestMatcher:
         assert len(matches) == 1
         assert matches[0]["sport"] == "tennis"
 
-    def test_date_match(self):
+    def test_day_name_match(self):
+        """Preference with matching day name should match diff date."""
         from matcher import match_preferences
 
+        # 2026-06-01 is Monday, 2026-06-02 is Tuesday
         diff = _sample_diff(date="2026-06-01")
         prefs = [
             {
@@ -292,7 +294,7 @@ class TestMatcher:
                 "preferenceId": "p1",
                 "facilityId": "frogner",
                 "sport": "tennis",
-                "dates": ["2026-06-01", "2026-06-02"],
+                "dates": ["monday", "tuesday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -301,17 +303,18 @@ class TestMatcher:
         assert len(matches) == 1
         assert matches[0]["date"] == "2026-06-01"
 
-    def test_no_match_wrong_date(self):
+    def test_no_match_wrong_day(self):
+        """Diff on Monday should not match a preference for Tuesday."""
         from matcher import match_preferences
 
-        diff = _sample_diff(date="2026-06-01")
+        diff = _sample_diff(date="2026-06-01")  # Monday
         prefs = [
             {
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
                 "sport": "tennis",
-                "dates": ["2026-06-02"],
+                "dates": ["tuesday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -329,7 +332,7 @@ class TestMatcher:
                 "preferenceId": "p1",
                 "facilityId": "frogner",
                 "sport": "tennis",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -347,7 +350,7 @@ class TestMatcher:
                 "preferenceId": "p1",
                 "facilityId": "frogner",
                 "sport": "tennis",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -366,7 +369,7 @@ class TestMatcher:
                 "preferenceId": "p1",
                 "facilityId": "frogner",
                 "sport": "tennis",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -385,7 +388,7 @@ class TestMatcher:
                 "preferenceId": "p1",
                 "facilityId": "frogner",
                 "sport": "tennis",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -402,7 +405,7 @@ class TestMatcher:
                 "preferenceId": "p1",
                 "facilityId": "frogner",
                 "sport": "tennis",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -427,7 +430,7 @@ class TestMatcher:
                 "preferenceId": "p1",
                 "facilityId": "frogner",
                 "sport": "tennis",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -453,7 +456,7 @@ class TestMatcher:
                 "facilityId": "ota",
                 "sport": "padel",
                 "courtType": "single",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -478,7 +481,7 @@ class TestMatcher:
                 "facilityId": "ota",
                 "sport": "padel",
                 "courtType": "double",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -504,7 +507,7 @@ class TestMatcher:
                 "preferenceId": "p1",
                 "facilityId": "ota",
                 "sport": "padel",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -528,7 +531,7 @@ class TestMatcher:
                 "facilityId": "ota",
                 "sport": "padel",
                 "courtType": "single",
-                "dates": ["2026-06-01"],
+                "dates": ["monday"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
             }
@@ -829,7 +832,7 @@ class TestHandler:
             user_id="alice@test.com",
             preference_id="p1",
             facility_id="frogner",
-            dates=["2026-06-01"],
+            dates=["monday"],  # 2026-06-01 is Monday
             time_from="17:00",
             time_to="22:00",
             sport="tennis",
@@ -854,7 +857,7 @@ class TestHandler:
             user_id="bob@test.com",
             preference_id="p2",
             facility_id="ota",
-            dates=["2026-06-01"],
+            dates=["monday"],  # 2026-06-01 is Monday
             sport="tennis",
         )
 
@@ -874,7 +877,7 @@ class TestHandler:
             user_id="alice@test.com",
             preference_id="p1",
             facility_id="frogner",
-            dates=["2026-06-01"],
+            dates=["monday"],  # 2026-06-01 is Monday
             time_from="17:00",
             time_to="22:00",
             sport="tennis",
@@ -909,7 +912,7 @@ class TestHandler:
             user_id="alice@test.com",
             preference_id="p1",
             facility_id="ota",
-            dates=["2026-06-01"],
+            dates=["monday"],  # 2026-06-01 is Monday
             time_from="17:00",
             time_to="22:00",
             sport="padel",
