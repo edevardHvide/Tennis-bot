@@ -64,7 +64,7 @@ USERS_TABLE = os.environ.get("USERS_TABLE", "tennis-users")
 SES_FROM_EMAIL = os.environ.get("SES_FROM_EMAIL", "")
 NEWSLETTER_TEST_RECIPIENT = os.environ.get("NEWSLETTER_TEST_RECIPIENT", "")
 
-FACILITIES = ["frogner", "ota", "bergentennisarena"]
+from facilities import facilities, get_sports
 
 # ---------------------------------------------------------------------------
 # Lazy AWS resource initialisation
@@ -129,25 +129,31 @@ def _compute_next_week() -> list[str]:
 def _load_availability(table, dates: list[str]) -> dict:
     """Read full availability from DynamoDB for all facilities and dates.
 
+    Iterates over every (facility, sport) pair and uses the composite key
+    ``"facility#sport"`` when querying DynamoDB.  The returned dict is keyed
+    by the same composite key so it feeds directly into the matcher.
+
     Returns:
-        Dict matching the diff format: facility_key -> date_str -> time_slot -> [court_name]
+        Dict matching the diff format: composite_key -> date_str -> time_slot -> [court_name]
     """
     availability: dict[str, dict[str, dict[str, list[str]]]] = {}
 
-    for facility_key in FACILITIES:
-        for date_str in dates:
-            try:
-                response = table.get_item(
-                    Key={"facilityId": facility_key, "date": date_str}
-                )
-                item = response.get("Item")
-                if item and "slots" in item:
-                    slots = json.loads(item["slots"])
-                    if slots:
-                        availability.setdefault(facility_key, {})[date_str] = slots
-            except ClientError as exc:
-                _log("warning", "Failed to load availability",
-                     facility=facility_key, date=date_str, error=str(exc))
+    for facility_key in facilities:
+        for sport in get_sports(facility_key):
+            composite_key = f"{facility_key}#{sport}"
+            for date_str in dates:
+                try:
+                    response = table.get_item(
+                        Key={"facilityId": composite_key, "date": date_str}
+                    )
+                    item = response.get("Item")
+                    if item and "slots" in item:
+                        slots = json.loads(item["slots"])
+                        if slots:
+                            availability.setdefault(composite_key, {})[date_str] = slots
+                except ClientError as exc:
+                    _log("warning", "Failed to load availability",
+                         facility=composite_key, date=date_str, error=str(exc))
 
     return availability
 

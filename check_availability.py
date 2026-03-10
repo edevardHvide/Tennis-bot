@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tennis Court Availability Monitor for Matchi.se facilities."""
+"""Court Availability Monitor for Matchi.se facilities."""
 
 import argparse
 import datetime
@@ -17,7 +17,7 @@ from rich.table import Table
 from rich.text import Text
 from rich import box
 
-from facilities import facilities
+from facilities import facilities, SPORT_CODES
 from email_notifications import (
     send_email_notification as send_email,
     send_new_courts_notification,
@@ -75,16 +75,16 @@ def send_notification(title, message, also_email: bool = False, email_body: str 
         print(f"Error sending alert: {e}")
 
 
-def fetch_available_slots(facility_name, target_date):
+def fetch_available_slots(facility_name, target_date, sport="tennis"):
     """Fetch available slots for a specific facility and date."""
-    facility_id = facilities[facility_name.lower()]
+    facility_id = facilities[facility_name.lower()]["matchi_id"]
     date_str = target_date.strftime("%Y-%m-%d")
     base_url = "https://www.matchi.se/book/schedule"
     params = {
         "wl": "",
         "facilityId": facility_id,
         "date": date_str,
-        "sport": "1",
+        "sport": str(SPORT_CODES[sport]),
     }
 
     # Fetch the content from the URL
@@ -210,9 +210,33 @@ def get_court_style(court_name, is_new=False, is_removed=False):
         return "white", icon
 
 
+def _filter_slots_by_court_type(
+    slots: dict[str, list[str]], court_type: str | None
+) -> dict[str, list[str]]:
+    """Filter courts by type (single/double). Only meaningful for padel.
+
+    - "single": keep only courts with "single" in the name (case-insensitive)
+    - "double": keep only courts WITHOUT "single" in the name
+    """
+    if not court_type:
+        return slots
+
+    filtered: dict[str, list[str]] = {}
+    for time_slot, courts in slots.items():
+        if court_type == "single":
+            kept = [c for c in courts if "single" in c.lower()]
+        else:  # "double"
+            kept = [c for c in courts if "single" not in c.lower()]
+        if kept:
+            filtered[time_slot] = kept
+    return filtered
+
+
 def collect_all_slots(
     dates: list[datetime.date],
     facility_filter: list[str] | None = None,
+    sport: str = "tennis",
+    court_type: str | None = None,
 ):
     """Collect slots for all (or selected) facilities and dates."""
     all_slots = {}
@@ -223,7 +247,7 @@ def collect_all_slots(
         else facilities
     )
 
-    console.print("\n🎾 Checking tennis court availability...\n", style="bold blue")
+    console.print("\n🎾 Checking court availability...\n", style="bold blue")
 
     for facility_name in active_facilities.keys():
         facility_display_name = facility_name.capitalize()
@@ -231,7 +255,9 @@ def collect_all_slots(
 
         for date in dates:
             try:
-                slots = fetch_available_slots(facility_name, date)
+                slots = fetch_available_slots(facility_name, date, sport=sport)
+                if court_type:
+                    slots = _filter_slots_by_court_type(slots, court_type)
                 all_slots[facility_name][date] = slots
                 console.print(
                     f"✓ Checked {facility_display_name} for {format_date_header(date)}",
@@ -434,12 +460,13 @@ def get_changes_summary(
     return changes
 
 
-def _build_schedule_url(facility_id: int, date_obj: datetime.date) -> str:
-    """Build a direct schedule link for a facility and date (tennis)."""
+def _build_schedule_url(facility_id: int, date_obj: datetime.date, sport: str = "tennis") -> str:
+    """Build a direct schedule link for a facility and date."""
     date_str = date_obj.strftime("%Y-%m-%d")
+    sport_code = SPORT_CODES[sport]
     return (
         f"https://www.matchi.se/book/schedule?facilityId={facility_id}"
-        f"&date={date_str}&sport=1"
+        f"&date={date_str}&sport={sport_code}"
     )
 
 
@@ -491,27 +518,28 @@ def _build_new_slots_email_body(
     current_slots,
     previous_slots,
     dates: list[datetime.date],
+    sport: str = "tennis",
 ) -> str:
     """Create a detailed email body listing new courts by facility/date with links.
-    
+
     Note: This function is kept for backward compatibility but now creates
     a simple plain text version. The new HTML templates are handled by
     the enhanced email_notifications module.
     Only includes dates from today onwards (filters out past dates).
     """
     lines: list[str] = []
-    lines.append("New tennis courts are available:\n")
+    lines.append("New courts are available:\n")
     today = datetime.date.today()
 
     for facility_key in current_slots.keys():
         facility_display = facility_key.capitalize()
-        facility_id = facilities[facility_key]
+        facility_id = facilities[facility_key]["matchi_id"]
 
         for date_obj in dates:
             # Skip past dates - only include today and future dates in emails
             if date_obj < today:
                 continue
-                
+
             new_courts, _removed = get_slot_changes(
                 current_slots, previous_slots, facility_key, date_obj
             )
@@ -529,7 +557,7 @@ def _build_new_slots_email_body(
                 courts_csv = ", ".join(courts)
                 lines.append(f"  - {time_slot}: {courts_csv}")
 
-            link = _build_schedule_url(facility_id, date_obj)
+            link = _build_schedule_url(facility_id, date_obj, sport=sport)
             lines.append(f"  Link: {link}\n")
 
     # Append a random quote if available
@@ -569,7 +597,7 @@ def show_legend(
     facility_filter: list[str] | None = None,
 ):
     """Display the legend for court types and status indicators."""
-    console.print("\n🎾 Tennis Court Availability Monitor", style="bold blue")
+    console.print("\n🎾 Court Availability Monitor", style="bold blue")
     if not dates:
         date_summary = "No dates"
     elif len(dates) <= 5:
@@ -810,6 +838,8 @@ def run_monitor(
     facility_filter: list[str] | None = None,
     once: bool = False,
     quiet: bool = False,
+    sport: str = "tennis",
+    court_type: str | None = None,
 ):
     """Run the main court availability monitoring loop."""
     # Initialize previous state
@@ -821,7 +851,7 @@ def run_monitor(
 
     while True:
         try:
-            current_slots = collect_all_slots(dates, facility_filter)
+            current_slots = collect_all_slots(dates, facility_filter, sport=sport, court_type=court_type)
             # Apply time filtering (if any)
             if between:
                 for facility_name in list(current_slots.keys()):
@@ -857,8 +887,9 @@ def run_monitor(
                     quote = _get_random_quote()
 
                     # Send desktop notification
+                    sport_label = sport.capitalize()
                     send_notification(
-                        title="🎾 New Tennis Courts Available!",
+                        title=f"🎾 New {sport_label} Courts Available!",
                         message=summary,
                         also_email=False,
                     )
@@ -874,9 +905,10 @@ def run_monitor(
                             current_slots=current_slots,
                             previous_slots=previous_slots,
                             dates=dates,
+                            sport=sport,
                         )
                         send_notification(
-                            title="🎾 New Tennis Courts Available!",
+                            title=f"🎾 New {sport_label} Courts Available!",
                             message=summary,
                             also_email=True,
                             email_body=email_body,
@@ -943,7 +975,7 @@ def run_monitor(
 def main():
     """Main entry point with command-line argument parsing."""
     parser = argparse.ArgumentParser(
-        description="🎾 Tennis Court Availability Monitor for Matchi.se",
+        description="🎾 Court Availability Monitor for Matchi.se",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -963,9 +995,9 @@ For more information, visit: https://availabilitymonitor.club
     # Monitor command (default)
     monitor_parser = subparsers.add_parser(
         "monitor",
-        help="Start monitoring tennis court availability (default)",
+        help="Start monitoring court availability (default)",
         description=(
-            "Monitor tennis courts and send notifications when slots become "
+            "Monitor courts and send notifications when slots become "
             "available"
         ),
     )
@@ -1100,6 +1132,23 @@ For more information, visit: https://availabilitymonitor.club
         default=False,
         help="Only print output when changes are detected; suppress unchanged status.",
     )
+    monitor_parser.add_argument(
+        "--sport",
+        type=str,
+        default="tennis",
+        choices=["tennis", "padel"],
+        help="Sport to monitor. Default: tennis",
+    )
+    monitor_parser.add_argument(
+        "--court-type",
+        type=str,
+        default=None,
+        choices=["double", "single"],
+        help=(
+            "Filter by court type (only meaningful for padel). "
+            "\"single\" = only single courts, \"double\" = only double courts."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -1150,8 +1199,10 @@ For more information, visit: https://availabilitymonitor.club
 
         once = getattr(args, "once", False)
         quiet = getattr(args, "quiet", False)
+        sport = getattr(args, "sport", "tennis")
+        court_type = getattr(args, "court_type", None)
 
-        run_monitor(dates, between, interval_seconds, facility_filter, once, quiet)
+        run_monitor(dates, between, interval_seconds, facility_filter, once, quiet, sport=sport, court_type=court_type)
     elif args.command == "test-notifications":
         test_notifications()
     elif args.command == "test-email":

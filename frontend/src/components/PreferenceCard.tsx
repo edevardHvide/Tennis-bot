@@ -22,14 +22,31 @@ export default function PreferenceCard({ preference, onEdit, onDelete }: Prefere
   };
 
   const sortedDates = [...preference.dates].sort();
+  const sport = preference.sport ?? 'tennis';
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            {getFacilityDisplayName(preference.facilityId)}
-          </h3>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {getFacilityDisplayName(preference.facilityId)}
+            </h3>
+            <span
+              className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${
+                sport === 'tennis'
+                  ? 'bg-green-100 text-green-700 border border-green-200'
+                  : 'bg-blue-100 text-blue-700 border border-blue-200'
+              }`}
+            >
+              {sport === 'tennis' ? 'Tennis' : 'Padel'}
+            </span>
+            {preference.courtType && (
+              <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                {preference.courtType === 'double' ? 'Double' : 'Single'}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-green-600 font-medium">
             {preference.timeFrom} - {preference.timeTo}
           </p>

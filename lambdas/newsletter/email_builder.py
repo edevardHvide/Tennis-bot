@@ -7,36 +7,46 @@ Day-first grouping: users scan "what's Monday?" not "what's at Frogner?"
 from datetime import datetime, timezone
 
 # ---------------------------------------------------------------------------
-# Facility configuration — mirrors the scraper's mapping
+# Facility configuration — imported from shared facilities module
 # ---------------------------------------------------------------------------
 
-FACILITIES: dict[str, int] = {
-    "frogner": 2259,
-    "ota": 1779,
-    "bergentennisarena": 301,
-}
-
-FACILITY_DISPLAY_NAMES: dict[str, str] = {
-    "frogner": "Frogner",
-    "ota": "OTA",
-    "bergentennisarena": "Bergen Tennis Arena",
-}
+from facilities import facilities, get_matchi_id, get_display_name, SPORT_CODES
 
 
-def _booking_url(facility_id: int, date: str) -> str:
-    """Build a Matchi booking URL for the given facility and date."""
+def _booking_url(facility_id: int, date: str, sport: str = "tennis") -> str:
+    """Build a Matchi booking URL for the given facility, date and sport."""
+    sport_code = SPORT_CODES.get(sport, 1)
     return (
         f"https://www.matchi.se/book/schedule"
-        f"?facilityId={facility_id}&date={date}&sport=1"
+        f"?facilityId={facility_id}&date={date}&sport={sport_code}"
     )
 
 
+def _parse_composite_key(facility_key: str) -> tuple[str, str]:
+    """Parse a possibly-composite facility key like 'ota#padel'.
+
+    Returns (base_key, sport).  If no '#' separator is present,
+    defaults to 'tennis'.
+    """
+    if "#" in facility_key:
+        base_key, sport = facility_key.rsplit("#", 1)
+    else:
+        base_key, sport = facility_key, "tennis"
+    return base_key, sport
+
+
 def _facility_name(facility_key: str) -> str:
-    return FACILITY_DISPLAY_NAMES.get(facility_key, facility_key.title())
+    base_key, _sport = _parse_composite_key(facility_key)
+    if base_key in facilities:
+        return get_display_name(base_key)
+    return base_key.title()
 
 
 def _facility_matchi_id(facility_key: str) -> int:
-    return FACILITIES.get(facility_key, 0)
+    base_key, _sport = _parse_composite_key(facility_key)
+    if base_key in facilities:
+        return get_matchi_id(base_key)
+    return 0
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +78,7 @@ _HTML_HEADER = """\
 
 _HTML_FOOTER = """\
 <div class="footer">
-  <p>Tennis Bot Weekly Newsletter &mdash; {timestamp}</p>
+  <p>Availability Monitor Weekly Newsletter &mdash; {timestamp}</p>
 </div>
 </div>
 </body>
@@ -115,7 +125,7 @@ def build_newsletter_email(
     week_range = f"{ws.strftime('Mon %d %b')} \u2013 {we.strftime('Sun %d %b')}"
 
     subject = (
-        f"Tennis Bot: Your week ahead \u2014 "
+        f"Availability Monitor: Your week ahead \u2014 "
         f"{total_courts} court slot{'s' if total_courts != 1 else ''} available "
         f"({ws.strftime('%d %b')} \u2013 {we.strftime('%d %b')})"
     )
@@ -131,7 +141,7 @@ def build_newsletter_email(
     # --- HTML body ---
     html_parts: list[str] = [_HTML_HEADER]
     html_parts.append(
-        f"<h1>Your Tennis Week: {week_range}</h1>"
+        f"<h1>Your Week Ahead: {week_range}</h1>"
     )
     html_parts.append(f"<p>{total_courts} slot{'s' if total_courts != 1 else ''} matching your preferences</p>")
 
@@ -142,9 +152,10 @@ def build_newsletter_email(
         facilities_map = by_date[date_str]
         for facility_key in sorted(facilities_map.keys()):
             courts = facilities_map[facility_key]
+            _base_key, sport = _parse_composite_key(facility_key)
             name = _facility_name(facility_key)
             matchi_id = _facility_matchi_id(facility_key)
-            url = _booking_url(matchi_id, date_str)
+            url = _booking_url(matchi_id, date_str, sport)
 
             html_parts.append(f'<div class="facility">')
             html_parts.append(f"<h3>{name}</h3>")
@@ -165,7 +176,7 @@ def build_newsletter_email(
 
     # --- Plain text body ---
     text_parts: list[str] = [
-        f"Your Tennis Week: {week_range}",
+        f"Your Week Ahead: {week_range}",
         f"{total_courts} slot{'s' if total_courts != 1 else ''} matching your preferences",
         "=" * 50,
         "",
@@ -178,9 +189,10 @@ def build_newsletter_email(
         facilities_map = by_date[date_str]
         for facility_key in sorted(facilities_map.keys()):
             courts = facilities_map[facility_key]
+            _base_key, sport = _parse_composite_key(facility_key)
             name = _facility_name(facility_key)
             matchi_id = _facility_matchi_id(facility_key)
-            url = _booking_url(matchi_id, date_str)
+            url = _booking_url(matchi_id, date_str, sport)
             text_parts.append(f"  {name}")
             for court in courts:
                 text_parts.append(
@@ -189,7 +201,7 @@ def build_newsletter_email(
             text_parts.append(f"    Book: {url}")
         text_parts.append("")
 
-    text_parts.append(f"-- Tennis Bot Weekly Newsletter | {timestamp}")
+    text_parts.append(f"-- Availability Monitor Weekly Newsletter | {timestamp}")
     text_body = "\n".join(text_parts)
 
     return {

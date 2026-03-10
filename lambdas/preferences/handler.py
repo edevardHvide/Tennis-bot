@@ -1,5 +1,5 @@
 """
-Lambda handler for the Tennis Bot Preferences API.
+Lambda handler for the Availability Monitor Preferences API.
 
 Routing:
   POST   /users                                    -> create_user
@@ -22,6 +22,8 @@ from datetime import datetime, timezone
 import boto3
 from boto3.dynamodb.conditions import Key
 
+from facilities import facilities, get_sports
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -30,8 +32,9 @@ REGION = os.environ.get("AWS_REGION", "eu-north-1")
 USERS_TABLE = os.environ.get("USERS_TABLE", "tennis-users")
 PREFS_TABLE = os.environ.get("PREFS_TABLE", "tennis-preferences")
 
-# Valid facility IDs (must match facilities.py)
-VALID_FACILITY_IDS = {"frogner", "ota", "bergentennisarena"}
+VALID_FACILITY_IDS = set(facilities.keys())
+VALID_SPORTS = {"tennis", "padel"}
+VALID_COURT_TYPES = {"double", "single"}
 
 # ---------------------------------------------------------------------------
 # DynamoDB resource (module-level for connection reuse across invocations)
@@ -132,6 +135,31 @@ def _validate_preference_body(body: dict) -> list[str]:
             f"facilityId {facility_id!r} is not valid; "
             f"must be one of {sorted(VALID_FACILITY_IDS)}"
         )
+
+    # Sport validation (optional, defaults to "tennis")
+    sport = body.get("sport", "tennis")
+    if sport not in VALID_SPORTS:
+        errors.append(
+            f"sport {sport!r} is not valid; must be one of {sorted(VALID_SPORTS)}"
+        )
+    elif facility_id and facility_id in VALID_FACILITY_IDS:
+        facility_sports = get_sports(facility_id)
+        if sport not in facility_sports:
+            errors.append(
+                f"facility {facility_id!r} does not support sport {sport!r}; "
+                f"supported sports: {facility_sports}"
+            )
+
+    # Court type validation (optional, only valid for padel)
+    court_type = body.get("courtType")
+    if court_type is not None:
+        if sport != "padel":
+            errors.append("courtType is only valid when sport is 'padel'")
+        elif court_type not in VALID_COURT_TYPES:
+            errors.append(
+                f"courtType {court_type!r} is not valid; "
+                f"must be one of {sorted(VALID_COURT_TYPES)}"
+            )
 
     dates = body.get("dates")
     if not dates:
@@ -239,16 +267,20 @@ def create_preference(event: dict, user_id: str) -> dict:
 
     now = datetime.now(timezone.utc).isoformat()
     preference_id = str(uuid.uuid4())
+    sport = body.get("sport", "tennis")
     item = {
         "userId": user_id,
         "preferenceId": preference_id,
         "facilityId": body["facilityId"],
+        "sport": sport,
         "dates": body["dates"],
         "timeFrom": body["timeFrom"],
         "timeTo": body["timeTo"],
         "createdAt": now,
         "updatedAt": now,
     }
+    if sport == "padel" and "courtType" in body:
+        item["courtType"] = body["courtType"]
     _prefs_table().put_item(Item=item)
 
     return _created(item)
@@ -278,16 +310,20 @@ def update_preference(event: dict, user_id: str, preference_id: str) -> dict:
         return _error("; ".join(errors))
 
     now = datetime.now(timezone.utc).isoformat()
+    sport = body.get("sport", "tennis")
     item = {
         "userId": user_id,
         "preferenceId": preference_id,
         "facilityId": body["facilityId"],
+        "sport": sport,
         "dates": body["dates"],
         "timeFrom": body["timeFrom"],
         "timeTo": body["timeTo"],
         "createdAt": existing["Item"]["createdAt"],
         "updatedAt": now,
     }
+    if sport == "padel" and "courtType" in body:
+        item["courtType"] = body["courtType"]
     _prefs_table().put_item(Item=item)
 
     return _ok(item)

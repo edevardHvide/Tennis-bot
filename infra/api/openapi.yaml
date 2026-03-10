@@ -1,10 +1,10 @@
 openapi: "3.0.3"
 info:
-  title: Tennis Bot Preferences API
+  title: Availability Monitor Preferences API
   description: >
-    REST API for managing users and per-user alert preferences for the Tennis
-    Court Availability Alert System. Users can register and configure alerts
-    that specify which facility, dates, and time windows they want to monitor.
+    REST API for managing users and per-user alert preferences for the
+    Availability Monitor. Users can register and configure alerts that specify
+    which facility, sport, dates, and time windows they want to monitor.
   version: "1.0.0"
 
 servers:
@@ -250,6 +250,25 @@ components:
           description: End of the time window (HH:MM, 24-hour); must be after timeFrom
           pattern: "^\\d{2}:\\d{2}$"
           example: "22:00"
+        sport:
+          type: string
+          description: >
+            Sport type to monitor. Defaults to "tennis" if omitted. The chosen
+            facility must support the specified sport.
+          enum:
+            - tennis
+            - padel
+          default: "tennis"
+          example: "tennis"
+        courtType:
+          type: string
+          description: >
+            Court type filter, only valid when sport is "padel". Omit to match
+            any court type.
+          enum:
+            - double
+            - single
+          example: "double"
 
     PreferenceResponse:
       type: object
@@ -276,6 +295,16 @@ components:
           format: uuid
         facilityId:
           type: string
+        sport:
+          type: string
+          enum:
+            - tennis
+            - padel
+        courtType:
+          type: string
+          enum:
+            - double
+            - single
         dates:
           type: array
           items:

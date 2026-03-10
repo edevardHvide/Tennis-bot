@@ -75,8 +75,10 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
       <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🎾</span>
-            <h1 className="text-xl font-bold text-gray-900">Tennis Bot</h1>
+            <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <h1 className="text-xl font-bold text-gray-900">Availability Monitor</h1>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600 hidden sm:inline">{userId}</span>
@@ -151,11 +153,11 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Welcome to Tennis Bot!</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Welcome to Availability Monitor!</h3>
               <p className="text-gray-500 max-w-md mx-auto">
-                Never miss an open court again. Tennis Bot monitors{' '}
+                Never miss an open court again. Availability Monitor watches{' '}
                 <a href="https://www.matchi.se" target="_blank" rel="noopener noreferrer" className="text-green-600 underline">matchi.se</a>{' '}
-                and emails you when matching courts become available.
+                for tennis and padel courts, and emails you when matching slots become available.
               </p>
             </div>
 
@@ -177,7 +179,7 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
                   <h4 className="font-semibold text-gray-900">We scan for courts</h4>
                 </div>
                 <p className="text-sm text-gray-500">
-                  Every 5 minutes, Tennis Bot checks matchi.se for newly available slots that match your criteria.
+                  Every 5 minutes, we check matchi.se for newly available tennis and padel courts that match your criteria.
                 </p>
               </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Preference, PreferenceFormData } from '../types';
+import type { Preference, PreferenceFormData, Sport, CourtType } from '../types';
 import { FACILITIES } from '../types';
 
 interface PreferenceFormProps {
@@ -22,6 +22,8 @@ function generateTimeOptions(): string[] {
 const TIME_OPTIONS = generateTimeOptions();
 
 export default function PreferenceForm({ editing, onSubmit, onCancel }: PreferenceFormProps) {
+  const [sport, setSport] = useState<Sport>(editing?.sport ?? 'tennis');
+  const [courtType, setCourtType] = useState<CourtType | undefined>(editing?.courtType);
   const [facilityId, setFacilityId] = useState(editing?.facilityId ?? '');
   const [dates, setDates] = useState<string[]>(editing?.dates ?? []);
   const [dateInput, setDateInput] = useState('');
@@ -31,14 +33,33 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  const filteredFacilities = FACILITIES.filter((f) => f.sports.includes(sport));
+
   useEffect(() => {
     if (editing) {
+      setSport(editing.sport ?? 'tennis');
+      setCourtType(editing.courtType);
       setFacilityId(editing.facilityId);
       setDates([...editing.dates]);
       setTimeFrom(editing.timeFrom);
       setTimeTo(editing.timeTo);
     }
   }, [editing]);
+
+  const handleSportChange = (newSport: Sport) => {
+    setSport(newSport);
+    // Clear court type when switching to tennis
+    if (newSport === 'tennis') {
+      setCourtType(undefined);
+    }
+    // Reset facility if the current one doesn't support the new sport
+    const facilitySupported = FACILITIES.find(
+      (f) => f.id === facilityId && f.sports.includes(newSport)
+    );
+    if (!facilitySupported) {
+      setFacilityId('');
+    }
+  };
 
   const addDate = () => {
     if (!dateInput) return;
@@ -62,6 +83,12 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
     const newErrors: Record<string, string> = {};
 
     if (!facilityId) newErrors.facilityId = 'Please select a facility.';
+    else {
+      const facility = FACILITIES.find((f) => f.id === facilityId);
+      if (facility && !facility.sports.includes(sport)) {
+        newErrors.facilityId = 'Selected facility does not support this sport.';
+      }
+    }
     if (dates.length === 0) newErrors.dates = 'Add at least one date.';
     if (!timeFrom) newErrors.timeFrom = 'Select a start time.';
     if (!timeTo) newErrors.timeTo = 'Select an end time.';
@@ -80,7 +107,14 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
 
     setLoading(true);
     try {
-      await onSubmit({ facilityId, dates, timeFrom, timeTo });
+      await onSubmit({
+        facilityId,
+        dates,
+        timeFrom,
+        timeTo,
+        sport,
+        ...(sport === 'padel' && courtType ? { courtType } : {}),
+      });
     } catch {
       setSubmitError('Failed to save preference. Please try again.');
     } finally {
@@ -95,6 +129,86 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Sport */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Sport
+          </label>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => handleSportChange('tennis')}
+              disabled={loading}
+              className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm border transition-colors ${
+                sport === 'tennis'
+                  ? 'bg-green-600 text-white border-green-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              Tennis
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSportChange('padel')}
+              disabled={loading}
+              className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm border transition-colors ${
+                sport === 'padel'
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              Padel
+            </button>
+          </div>
+        </div>
+
+        {/* Court Type (padel only) */}
+        {sport === 'padel' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Court Type
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setCourtType(undefined)}
+                disabled={loading}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                  courtType === undefined
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Any
+              </button>
+              <button
+                type="button"
+                onClick={() => setCourtType('double')}
+                disabled={loading}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                  courtType === 'double'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Double
+              </button>
+              <button
+                type="button"
+                onClick={() => setCourtType('single')}
+                disabled={loading}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                  courtType === 'single'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Single
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Facility */}
         <div>
           <label htmlFor="facility" className="block text-sm font-medium text-gray-700 mb-1">
@@ -108,7 +222,7 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
             disabled={loading}
           >
             <option value="">Select a facility...</option>
-            {FACILITIES.map((f) => (
+            {filteredFacilities.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.displayName}
               </option>

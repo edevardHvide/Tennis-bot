@@ -2,14 +2,14 @@
 AWS Lambda handler — Court Availability Scraper.
 
 Responsibilities:
-1. Fetch availability for all active facilities and the next 14 days.
-2. For each facility+date, load the previous snapshot from DynamoDB.
+1. Fetch availability for all active facilities and sports for the next 14 days.
+2. For each facility+sport+date, load the previous snapshot from DynamoDB.
 3. Diff against the new snapshot to find only newly available courts.
 4. Write the new snapshot back to DynamoDB.
 5. Return the diff result as JSON.
 
 DynamoDB table: tennis-availability
-  PK (partition key): facilityId  (string, e.g. "frogner")
+  PK (partition key): facilityId  (string, e.g. "frogner#tennis", "ota#padel")
   SK (sort key):      date        (string, YYYY-MM-DD)
   Attribute:          slots       (JSON string of time_slot -> [court_name])
 """
@@ -23,6 +23,7 @@ import time
 
 import boto3
 from botocore.exceptions import ClientError
+from facilities import facilities, get_sports
 
 # ---------------------------------------------------------------------------
 # Logging — structured JSON to CloudWatch
@@ -51,14 +52,8 @@ def _log(level: str, message: str, **extra) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Facility configuration — mirrors facilities.py without the CLI import chain
+# Configuration
 # ---------------------------------------------------------------------------
-
-FACILITIES: dict[str, int] = {
-    "frogner": 2259,
-    "ota": 1779,
-    "bergentennisarena": 301,
-}
 
 DAYS_AHEAD = int(os.environ.get("SCRAPER_DAYS_AHEAD", "14"))
 DYNAMODB_TABLE = os.environ.get("DYNAMODB_TABLE", "tennis-availability")
@@ -162,9 +157,16 @@ def lambda_handler(event: dict, context) -> dict:
     fetch_errors = 0
     facilities_skipped = []
 
-    for facility_key, facility_id in FACILITIES.items():
-        current_snapshot[facility_key] = {}
-        previous_snapshot[facility_key] = {}
+    # Build list of (facility_key, sport) pairs to scrape
+    facility_sport_pairs = []
+    for facility_key, config in facilities.items():
+        for sport in get_sports(facility_key):
+            facility_sport_pairs.append((facility_key, config["matchi_id"], sport))
+
+    for facility_key, facility_id, sport in facility_sport_pairs:
+        composite_key = f"{facility_key}#{sport}"
+        current_snapshot[composite_key] = {}
+        previous_snapshot[composite_key] = {}
 
         consecutive_failures = 0
 
@@ -172,46 +174,46 @@ def lambda_handler(event: dict, context) -> dict:
             # --- Circuit breaker: skip remaining dates if too many failures ---
             if consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD:
                 _log("warning", "Circuit breaker tripped — skipping remaining dates",
-                     facility=facility_key,
+                     facility=composite_key,
                      consecutive_failures=consecutive_failures,
                      skipped_date=date_str)
-                if facility_key not in facilities_skipped:
-                    facilities_skipped.append(facility_key)
+                if composite_key not in facilities_skipped:
+                    facilities_skipped.append(composite_key)
                 # Load previous snapshot to preserve existing data
-                prev_slots = load_snapshot(table, facility_key, date_str)
-                previous_snapshot[facility_key][date_str] = prev_slots
-                current_snapshot[facility_key][date_str] = prev_slots
+                prev_slots = load_snapshot(table, composite_key, date_str)
+                previous_snapshot[composite_key][date_str] = prev_slots
+                current_snapshot[composite_key][date_str] = prev_slots
                 continue
 
             slot_start = time.monotonic()
 
             # --- Load previous snapshot ---
-            prev_slots = load_snapshot(table, facility_key, date_str)
-            previous_snapshot[facility_key][date_str] = prev_slots
+            prev_slots = load_snapshot(table, composite_key, date_str)
+            previous_snapshot[composite_key][date_str] = prev_slots
 
             # --- Fetch current availability ---
             try:
-                curr_slots = fetch_available_slots(facility_id, date_str)
+                curr_slots = fetch_available_slots(facility_id, date_str, sport=sport)
                 consecutive_failures = 0  # reset on success
             except Exception as exc:
                 _log("warning", "Failed to fetch slots",
-                     facility=facility_key, date=date_str, error=str(exc))
+                     facility=composite_key, date=date_str, error=str(exc))
                 fetch_errors += 1
                 consecutive_failures += 1
                 # Keep previous snapshot so we don't wipe good data.
                 curr_slots = prev_slots
 
-            current_snapshot[facility_key][date_str] = curr_slots
+            current_snapshot[composite_key][date_str] = curr_slots
             slot_count = sum(len(v) for v in curr_slots.values())
             total_slots_fetched += slot_count
 
             duration_ms = round((time.monotonic() - slot_start) * 1000)
             _log("info", "Fetched slots",
-                 facility=facility_key, date=date_str,
+                 facility=composite_key, date=date_str,
                  slot_count=slot_count, duration_ms=duration_ms)
 
             # --- Persist new snapshot ---
-            save_snapshot(table, facility_key, date_str, curr_slots)
+            save_snapshot(table, composite_key, date_str, curr_slots)
 
     # --- Compute diff (new courts only) ---
     diff = build_new_courts_diff(current_snapshot, previous_snapshot)
@@ -242,7 +244,7 @@ def lambda_handler(event: dict, context) -> dict:
             "fetch_errors": fetch_errors,
             "facilities_skipped": facilities_skipped,
             "duration_ms": total_duration_ms,
-            "facilities_checked": list(FACILITIES.keys()),
+            "facilities_checked": [f"{k}#{s}" for k, _, s in facility_sport_pairs],
             "dates_checked": date_strings,
         },
     }

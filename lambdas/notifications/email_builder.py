@@ -7,37 +7,30 @@ Produces SES-ready email bodies without any template engine dependency
 
 from datetime import datetime, timezone
 
-# ---------------------------------------------------------------------------
-# Facility configuration — mirrors the scraper's mapping
-# ---------------------------------------------------------------------------
-
-FACILITIES: dict[str, int] = {
-    "frogner": 2259,
-    "ota": 1779,
-    "bergentennisarena": 301,
-}
-
-FACILITY_DISPLAY_NAMES: dict[str, str] = {
-    "frogner": "Frogner",
-    "ota": "OTA",
-    "bergentennisarena": "Bergen Tennis Arena",
-}
+from facilities import facilities, get_matchi_id, get_display_name, SPORT_CODES
 
 
-def _booking_url(facility_id: int, date: str) -> str:
-    """Build a Matchi booking URL for the given facility and date."""
+def _booking_url(facility_id: int, date: str, sport: str = "tennis") -> str:
+    """Build a Matchi booking URL for the given facility, date, and sport."""
+    sport_code = SPORT_CODES.get(sport, 1)
     return (
         f"https://www.matchi.se/book/schedule"
-        f"?facilityId={facility_id}&date={date}&sport=1"
+        f"?facilityId={facility_id}&date={date}&sport={sport_code}"
     )
 
 
 def _facility_name(facility_key: str) -> str:
-    return FACILITY_DISPLAY_NAMES.get(facility_key, facility_key.title())
+    try:
+        return get_display_name(facility_key)
+    except KeyError:
+        return facility_key.title()
 
 
 def _facility_matchi_id(facility_key: str) -> int:
-    return FACILITIES.get(facility_key, 0)
+    try:
+        return get_matchi_id(facility_key)
+    except KeyError:
+        return 0
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +61,7 @@ _HTML_HEADER = """\
 
 _HTML_FOOTER = """\
 <div class="footer">
-  <p>Tennis Bot Notification &mdash; {timestamp}</p>
+  <p>Availability Monitor Notification &mdash; {timestamp}</p>
 </div>
 </div>
 </body>
@@ -81,7 +74,7 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
 
     Args:
         user_id: the recipient's user/email ID.
-        matches: list of match dicts, each with facilityId, date, courts.
+        matches: list of match dicts, each with facilityId, sport, date, courts.
 
     Returns:
         Dict with keys ``subject``, ``html_body``, ``text_body``.
@@ -90,28 +83,32 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     # --- Subject ---
-    subject = f"Tennis Bot: {total_courts} new court{'s' if total_courts != 1 else ''} available!"
+    subject = f"Availability Monitor: {total_courts} new court{'s' if total_courts != 1 else ''} available!"
 
-    # --- Group by facility + date for display ---
-    # { facility_key: { date: [court_dicts] } }
-    grouped: dict[str, dict[str, list[dict]]] = {}
+    # --- Group by facility + sport + date for display ---
+    # { (facility_key, sport): { date: [court_dicts] } }
+    grouped: dict[tuple[str, str], dict[str, list[dict]]] = {}
     for match in matches:
         fac = match["facilityId"]
+        sport = match.get("sport", "tennis")
         date = match["date"]
-        grouped.setdefault(fac, {}).setdefault(date, []).extend(match["courts"])
+        group_key = (fac, sport)
+        grouped.setdefault(group_key, {}).setdefault(date, []).extend(match["courts"])
 
     # --- HTML body ---
     html_parts: list[str] = [_HTML_HEADER]
     html_parts.append(f"<h1>{total_courts} New Court{'s' if total_courts != 1 else ''} Found</h1>")
 
-    for facility_key, dates_map in sorted(grouped.items()):
+    for (facility_key, sport), dates_map in sorted(grouped.items()):
         name = _facility_name(facility_key)
         matchi_id = _facility_matchi_id(facility_key)
+        sport_label = sport.title() if sport != "tennis" else ""
+        heading = f"{name} — {sport_label}" if sport_label else name
         html_parts.append(f'<div class="facility">')
-        html_parts.append(f"<h2>{name}</h2>")
+        html_parts.append(f"<h2>{heading}</h2>")
 
         for date_str, courts in sorted(dates_map.items()):
-            url = _booking_url(matchi_id, date_str)
+            url = _booking_url(matchi_id, date_str, sport)
             html_parts.append(f"<p><strong>{date_str}</strong></p>")
             for court in courts:
                 html_parts.append(
@@ -135,13 +132,15 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
         "=" * 40,
         "",
     ]
-    for facility_key, dates_map in sorted(grouped.items()):
+    for (facility_key, sport), dates_map in sorted(grouped.items()):
         name = _facility_name(facility_key)
         matchi_id = _facility_matchi_id(facility_key)
-        text_parts.append(name)
-        text_parts.append("-" * len(name))
+        sport_label = sport.title() if sport != "tennis" else ""
+        heading = f"{name} — {sport_label}" if sport_label else name
+        text_parts.append(heading)
+        text_parts.append("-" * len(heading))
         for date_str, courts in sorted(dates_map.items()):
-            url = _booking_url(matchi_id, date_str)
+            url = _booking_url(matchi_id, date_str, sport)
             text_parts.append(f"  {date_str}")
             for court in courts:
                 text_parts.append(
@@ -150,7 +149,7 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
             text_parts.append(f"  Book: {url}")
         text_parts.append("")
 
-    text_parts.append(f"-- Tennis Bot | {timestamp}")
+    text_parts.append(f"-- Availability Monitor | {timestamp}")
     text_body = "\n".join(text_parts)
 
     return {

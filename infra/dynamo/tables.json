@@ -21,7 +21,7 @@
       { "AttributeName": "preferenceId", "AttributeType": "S" }
     ],
     "BillingMode": "PAY_PER_REQUEST",
-    "Comment": "Per-user alert preferences. Fields: facilityId, dates[], timeFrom, timeTo, active."
+    "Comment": "Per-user alert preferences. Fields: facilityId, sport, courtType, dates[], timeFrom, timeTo."
   },
   {
     "TableName": "tennis-availability",
@@ -34,7 +34,7 @@
       { "AttributeName": "date", "AttributeType": "S" }
     ],
     "BillingMode": "PAY_PER_REQUEST",
-    "Comment": "Cached scraper snapshot per facility+date. Stores slot map for diffing."
+    "Comment": "Cached scraper snapshot per facility+sport+date. facilityId uses composite key: facility#sport (e.g. ota#padel)."
   },
   {
     "TableName": "tennis-notifications",
@@ -49,6 +49,6 @@
       "Enabled": true,
       "AttributeName": "ttl"
     },
-    "Comment": "Sent notification history for deduplication. Items expire after 7 days (ttl = unix epoch)."
+    "Comment": "Sent notification history for deduplication. Hash includes sport for independent dedup. Items expire after 24h (ttl = unix epoch)."
   }
 ]

@@ -1,8 +1,10 @@
-# Tennis Bot — Claude Code Guide
+# Availability Monitor — Claude Code Guide
 
 ## Project Overview
 
-Serverless tennis court availability monitor. Scrapes [matchi.se](https://www.matchi.se) for open court slots, matches against user preferences, and sends HTML email alerts via AWS SES. No API from Matchi — pure HTML scraping.
+Serverless **multi-sport** court availability monitor. Scrapes [matchi.se](https://www.matchi.se) for open tennis and padel court slots, matches against user preferences, and sends HTML email alerts via AWS SES. No API from Matchi — pure HTML scraping.
+
+**Supported sports:** Tennis (`sport=1`) and Padel (`sport=5`) on matchi.se.
 
 **Repo:** https://github.com/edevardHvide/Tennis-bot
 
@@ -10,14 +12,31 @@ Serverless tennis court availability monitor. Scrapes [matchi.se](https://www.ma
 
 ## Architecture
 
-Three AWS Lambda functions + React frontend:
+Four AWS Lambda functions + React frontend:
 
-1. **Scraper** (`lambdas/scraper/`) — EventBridge cron triggers scraping of matchi.se for 3 facilities. Diffs against DynamoDB snapshots, invokes notifications Lambda with new slots.
-2. **Preferences API** (`lambdas/preferences/`) — REST CRUD for user notification preferences (facility, days, time range). Behind API Gateway.
-3. **Notifications** (`lambdas/notifications/`) — Matches scraper diffs against user preferences (facility + day-of-week + time window), deduplicates, sends HTML email via SES.
-4. **Frontend** (`frontend/`) — React + TypeScript + Vite + Tailwind. Users register by email and manage notification preferences.
+1. **Scraper** (`lambdas/scraper/`) — EventBridge cron triggers scraping of matchi.se for all facility+sport pairs. Diffs against DynamoDB snapshots, invokes notifications Lambda with new slots. Uses composite keys `facility#sport` (e.g. `"ota#padel"`).
+2. **Preferences API** (`lambdas/preferences/`) — REST CRUD for user notification preferences (facility, sport, court type, dates, time range). Behind API Gateway.
+3. **Notifications** (`lambdas/notifications/`) — Matches scraper diffs against user preferences (facility + sport + day-of-week + time window + court type), deduplicates, sends HTML email via SES.
+4. **Newsletter** (`lambdas/newsletter/`) — Weekly summary email of upcoming availability. Uses shared `matcher.py` from notifications.
+5. **Frontend** (`frontend/`) — React + TypeScript + Vite + Tailwind. Users register by email, select sport (tennis/padel), and manage notification preferences.
 
-**Local CLI** (`check_availability.py`) — Standalone polling bot with Windows toast + email alerts for manual use.
+**Local CLI** (`check_availability.py`) — Standalone polling bot with Windows toast + email alerts. Supports `--sport` and `--court-type` flags.
+
+## Facilities Configuration
+
+All facility config is centralized in `facilities.py` and copied into each Lambda package at build time via `Makefile`. Never duplicate facility data in Lambda handlers.
+
+```python
+SPORT_CODES = {"tennis": 1, "padel": 5}
+
+facilities = {
+    "frogner": {"matchi_id": 2259, "display_name": "Frogner", "sports": ["tennis"]},
+    "ota": {"matchi_id": 1779, "display_name": "OTA", "sports": ["tennis", "padel"]},
+    "bergentennisarena": {"matchi_id": 301, "display_name": "Bergen Tennis Arena", "sports": ["tennis"]},
+}
+```
+
+Helpers: `get_matchi_id()`, `get_display_name()`, `get_sports()`, `get_facilities_for_sport()`.
 
 ## Tech Stack
 
@@ -56,11 +75,16 @@ make deploy-all          # Deploy everything
 make deploy-scraper      # Package & deploy scraper Lambda
 make deploy-preferences  # Package & deploy preferences Lambda
 make deploy-notifications # Package & deploy notifications Lambda
+make deploy-newsletter   # Package & deploy newsletter Lambda
 make deploy-frontend     # Build & sync frontend to S3
 make deploy-dynamo       # Create/verify DynamoDB tables
 
 # Frontend dev
 cd frontend && npm install && npm run dev
+
+# DynamoDB migrations (one-time, for existing data)
+python scripts/migrate_availability_sport.py --profile tennis-bot [--dry-run]
+python scripts/migrate_preferences_sport.py --profile tennis-bot [--dry-run]
 ```
 
 ## DynamoDB Tables
@@ -68,29 +92,36 @@ cd frontend && npm install && npm run dev
 | Table | PK | SK | Notes |
 |-------|----|----|-------|
 | tennis-users | userId | — | User registration |
-| tennis-preferences | userId | preferenceId | Notification preferences |
-| tennis-availability | facilityId | date | Scraper snapshots |
-| tennis-notifications | notificationId | — | Dedup with 7-day TTL |
+| tennis-preferences | userId | preferenceId | Has `sport` (tennis/padel) and optional `courtType` (double/single) |
+| tennis-availability | facilityId | date | Scraper snapshots. PK uses composite key: `facility#sport` (e.g. `"ota#padel"`) |
+| tennis-notifications | notificationId | — | Dedup with 24h TTL. Hash includes sport for independent dedup |
 
-## Active Facilities
+## Multi-Sport Key Conventions
 
-Defined in `facilities.py`: `frogner` (2259), `ota` (1779), `bergentennisarena` (301)
+- **DynamoDB availability PK:** `"frogner#tennis"`, `"ota#padel"` — encodes sport into facilityId
+- **Diff keys:** Same composite format, flows through scraper → notifications pipeline
+- **Preferences:** Have `sport` field (default `"tennis"`) and optional `courtType` field
+- **Court type filtering (padel):** `"single"` matches courts with "single" in name; `"double"` matches courts WITHOUT "single" in name
+- **Booking URLs:** Use `sport=1` for tennis, `sport=5` for padel
 
 ## Project Structure
 
 ```
+facilities.py          Shared facility config (copied into Lambda packages)
 lambdas/
-  scraper/       handler.py, scraper.py, diff.py
-  preferences/   handler.py
-  notifications/  handler.py, matcher.py, dedup.py, email_builder.py
+  scraper/             handler.py, scraper.py, diff.py
+  preferences/         handler.py
+  notifications/       handler.py, matcher.py, dedup.py, email_builder.py
+  newsletter/          handler.py, email_builder.py
 frontend/src/
-  components/    Dashboard, LoginForm, PreferenceForm, PreferenceCard
+  components/          Dashboard, LoginForm, PreferenceForm, PreferenceCard
   api.ts, types.ts, App.tsx
+scripts/               DynamoDB migration scripts
 infra/
-  dynamo/        tables.json, deploy.sh
-  api/           openapi.yaml
-tests/           test_scraper.py, test_preferences.py, test_notifications.py
-email_templates/ base.html, new_courts.html, newsletter.html, etc.
+  dynamo/              tables.json, deploy.sh
+  api/                 openapi.yaml
+tests/                 test_scraper.py, test_preferences.py, test_notifications.py, test_newsletter.py
+email_templates/       base.html, new_courts.html, newsletter.html, etc.
 ```
 
 ## Environment Variables
@@ -98,5 +129,6 @@ email_templates/ base.html, new_courts.html, newsletter.html, etc.
 **Scraper:** `SCRAPER_DAYS_AHEAD` (14), `DYNAMODB_TABLE`, `NOTIFICATIONS_FUNCTION`
 **Preferences:** `USERS_TABLE`, `PREFS_TABLE`
 **Notifications:** `NOTIFICATIONS_TABLE`, `PREFS_TABLE`, `USERS_TABLE`, `SES_FROM_EMAIL`
+**Newsletter:** `AVAILABILITY_TABLE`, `PREFS_TABLE`, `USERS_TABLE`, `SES_FROM_EMAIL`, `NEWSLETTER_TEST_RECIPIENT`
 **Frontend:** `VITE_API_URL` (API Gateway base URL)
 **Local CLI:** `EMAIL_ENABLED`, `BREVO_API_KEY`, `SMTP_*`, `EMAIL_FROM`, `EMAIL_TO`

@@ -17,7 +17,7 @@ S3_FRONTEND_BUCKET = tennis-bot-frontend-$(ACCOUNT)
 
 help:
 	@echo ""
-	@echo "Tennis Bot — available targets:"
+	@echo "Availability Monitor — available targets:"
 	@echo ""
 	@echo "  install                Install Python dependencies"
 	@echo "  deploy-all             Deploy everything (infra + lambdas + frontend)"
@@ -50,6 +50,7 @@ package-scraper:
 	@mkdir -p build
 	@cd lambdas/scraper && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
 	@cd lambdas/scraper && cp -r . ./package/ 2>/dev/null || true
+	@cp facilities.py lambdas/scraper/package/
 	@cd lambdas/scraper/package && zip -qr ../../../build/scraper.zip .
 	@echo "   build/scraper.zip ready"
 
@@ -58,6 +59,7 @@ package-preferences:
 	@mkdir -p build
 	@cd lambdas/preferences && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
 	@cd lambdas/preferences && cp -r . ./package/ 2>/dev/null || true
+	@cp facilities.py lambdas/preferences/package/
 	@cd lambdas/preferences/package && zip -qr ../../../build/preferences.zip .
 	@echo "   build/preferences.zip ready"
 
@@ -66,6 +68,7 @@ package-notifications:
 	@mkdir -p build
 	@cd lambdas/notifications && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
 	@cd lambdas/notifications && cp -r . ./package/ 2>/dev/null || true
+	@cp facilities.py lambdas/notifications/package/
 	@cd lambdas/notifications/package && zip -qr ../../../build/notifications.zip .
 	@echo "   build/notifications.zip ready"
 
@@ -74,6 +77,7 @@ package-newsletter:
 	@mkdir -p build
 	@cd lambdas/newsletter && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
 	@cd lambdas/newsletter && cp -r . ./package/ 2>/dev/null || true
+	@cp facilities.py lambdas/newsletter/package/
 	@cp lambdas/notifications/matcher.py lambdas/newsletter/package/
 	@cd lambdas/newsletter/package && zip -qr ../../../build/newsletter.zip .
 	@echo "   build/newsletter.zip ready"

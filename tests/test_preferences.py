@@ -21,6 +21,10 @@ from moto import mock_aws
 # Ensure the handler module can be imported regardless of working directory
 # ---------------------------------------------------------------------------
 
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
 HANDLER_DIR = os.path.join(os.path.dirname(__file__), "..", "lambdas", "preferences")
 if HANDLER_DIR not in sys.path:
     sys.path.insert(0, HANDLER_DIR)
@@ -420,6 +424,250 @@ class TestCreatePreference:
                 None,
             )
             assert response["statusCode"] == 201, f"Failed for facility: {facility}"
+
+
+# ---------------------------------------------------------------------------
+# Sport & courtType validation
+# ---------------------------------------------------------------------------
+
+
+class TestSportAndCourtType:
+    def test_default_sport_is_tennis(self, dynamo):
+        import handler as h
+
+        _register_user()
+        body = _valid_pref_body()  # no sport field
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 201
+        data = _body(response)["data"]
+        assert data["sport"] == "tennis"
+        assert "courtType" not in data
+
+    def test_explicit_tennis_sport_accepted(self, dynamo):
+        import handler as h
+
+        _register_user()
+        body = {**_valid_pref_body(), "sport": "tennis"}
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 201
+        assert _body(response)["data"]["sport"] == "tennis"
+
+    def test_padel_at_ota_accepted(self, dynamo):
+        import handler as h
+
+        _register_user()
+        body = {**_valid_pref_body(), "facilityId": "ota", "sport": "padel"}
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 201
+        data = _body(response)["data"]
+        assert data["sport"] == "padel"
+        assert data["facilityId"] == "ota"
+
+    def test_padel_at_frogner_rejected(self, dynamo):
+        """Frogner only supports tennis, so padel should be rejected."""
+        import handler as h
+
+        _register_user()
+        body = {**_valid_pref_body(), "facilityId": "frogner", "sport": "padel"}
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 400
+        assert "does not support sport" in _body(response)["error"]
+
+    def test_invalid_sport_rejected(self, dynamo):
+        import handler as h
+
+        _register_user()
+        body = {**_valid_pref_body(), "sport": "golf"}
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 400
+        assert "sport" in _body(response)["error"]
+
+    def test_court_type_accepted_for_padel(self, dynamo):
+        import handler as h
+
+        _register_user()
+        body = {
+            **_valid_pref_body(),
+            "facilityId": "ota",
+            "sport": "padel",
+            "courtType": "double",
+        }
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 201
+        data = _body(response)["data"]
+        assert data["courtType"] == "double"
+        assert data["sport"] == "padel"
+
+    def test_court_type_single_accepted_for_padel(self, dynamo):
+        import handler as h
+
+        _register_user()
+        body = {
+            **_valid_pref_body(),
+            "facilityId": "ota",
+            "sport": "padel",
+            "courtType": "single",
+        }
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 201
+        assert _body(response)["data"]["courtType"] == "single"
+
+    def test_court_type_rejected_for_tennis(self, dynamo):
+        """courtType is only valid for padel."""
+        import handler as h
+
+        _register_user()
+        body = {**_valid_pref_body(), "sport": "tennis", "courtType": "double"}
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 400
+        assert "courtType" in _body(response)["error"]
+
+    def test_invalid_court_type_rejected(self, dynamo):
+        import handler as h
+
+        _register_user()
+        body = {
+            **_valid_pref_body(),
+            "facilityId": "ota",
+            "sport": "padel",
+            "courtType": "triple",
+        }
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 400
+        assert "courtType" in _body(response)["error"]
+
+    def test_padel_without_court_type_accepted(self, dynamo):
+        """Omitting courtType for padel means 'any court type'."""
+        import handler as h
+
+        _register_user()
+        body = {**_valid_pref_body(), "facilityId": "ota", "sport": "padel"}
+        response = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=body,
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        assert response["statusCode"] == 201
+        data = _body(response)["data"]
+        assert data["sport"] == "padel"
+        assert "courtType" not in data
+
+    def test_update_with_sport_and_court_type(self, dynamo):
+        """PUT should also store sport and courtType."""
+        import handler as h
+
+        _register_user()
+        # Create with defaults
+        create_resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body=_valid_pref_body(),
+                path_params={"userId": "alice@example.com"},
+            ),
+            None,
+        )
+        pref_id = _body(create_resp)["data"]["preferenceId"]
+
+        # Update to padel with courtType
+        updated_body = {
+            **_valid_pref_body(),
+            "facilityId": "ota",
+            "sport": "padel",
+            "courtType": "single",
+        }
+        response = h.lambda_handler(
+            _event(
+                "PUT",
+                "/users/{userId}/preferences/{preferenceId}",
+                body=updated_body,
+                path_params={
+                    "userId": "alice@example.com",
+                    "preferenceId": pref_id,
+                },
+            ),
+            None,
+        )
+        assert response["statusCode"] == 200
+        data = _body(response)["data"]
+        assert data["sport"] == "padel"
+        assert data["courtType"] == "single"
 
 
 # ---------------------------------------------------------------------------

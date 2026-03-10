@@ -1,5 +1,5 @@
 """
-Unit tests for the Notification Engine Lambda (Phase 4).
+Unit tests for the Notification Engine Lambda (multi-sport).
 
 Uses moto to mock DynamoDB and SES — no real AWS calls are made.
 
@@ -26,6 +26,11 @@ from moto import mock_aws
 HANDLER_DIR = os.path.join(os.path.dirname(__file__), "..", "lambdas", "notifications")
 if HANDLER_DIR not in sys.path:
     sys.path.insert(0, HANDLER_DIR)
+
+# Ensure repo root is on sys.path so ``from facilities import ...`` works
+REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, os.path.abspath(REPO_ROOT))
 
 
 # ---------------------------------------------------------------------------
@@ -134,28 +139,34 @@ def _add_preference(
     dates: list[str] | None = None,
     time_from: str = "17:00",
     time_to: str = "22:00",
+    sport: str = "tennis",
+    court_type: str | None = None,
 ) -> None:
     table = dynamo_resource.Table(PREFS_TABLE)
-    table.put_item(
-        Item={
-            "userId": user_id,
-            "preferenceId": preference_id,
-            "facilityId": facility_id,
-            "dates": dates or ["2026-06-01"],
-            "timeFrom": time_from,
-            "timeTo": time_to,
-        }
-    )
+    item = {
+        "userId": user_id,
+        "preferenceId": preference_id,
+        "facilityId": facility_id,
+        "dates": dates or ["2026-06-01"],
+        "timeFrom": time_from,
+        "timeTo": time_to,
+        "sport": sport,
+    }
+    if court_type:
+        item["courtType"] = court_type
+    table.put_item(Item=item)
 
 
 def _sample_diff(
     facility: str = "frogner",
+    sport: str = "tennis",
     date: str = "2026-06-01",
     time_slot: str = "17:00-18:00",
     courts: list[str] | None = None,
 ) -> dict:
+    composite_key = f"{facility}#{sport}"
     return {
-        facility: {
+        composite_key: {
             date: {
                 time_slot: courts or ["Court 1"],
             },
@@ -163,8 +174,8 @@ def _sample_diff(
     }
 
 
-def _dedup_key(user_id, facility_id, date, time_slot, court_name):
-    raw = f"{user_id}|{facility_id}|{date}|{time_slot}|{court_name}"
+def _dedup_key(user_id, facility_id, sport, date, time_slot, court_name):
+    raw = f"{user_id}|{facility_id}|{sport}|{date}|{time_slot}|{court_name}"
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
@@ -183,6 +194,7 @@ class TestMatcher:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "dates": ["2026-06-01"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
@@ -191,6 +203,7 @@ class TestMatcher:
         matches = match_preferences(diff, prefs)
         assert len(matches) == 1
         assert matches[0]["facilityId"] == "frogner"
+        assert matches[0]["sport"] == "tennis"
 
     def test_no_match_wrong_facility(self):
         from matcher import match_preferences
@@ -201,6 +214,7 @@ class TestMatcher:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "dates": ["2026-06-01"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
@@ -208,6 +222,65 @@ class TestMatcher:
         ]
         matches = match_preferences(diff, prefs)
         assert len(matches) == 0
+
+    def test_no_match_wrong_sport(self):
+        """Tennis preference should not match padel diff."""
+        from matcher import match_preferences
+
+        diff = _sample_diff(facility="ota", sport="padel")
+        prefs = [
+            {
+                "userId": "alice@test.com",
+                "preferenceId": "p1",
+                "facilityId": "ota",
+                "sport": "tennis",
+                "dates": ["2026-06-01"],
+                "timeFrom": "17:00",
+                "timeTo": "22:00",
+            }
+        ]
+        matches = match_preferences(diff, prefs)
+        assert len(matches) == 0
+
+    def test_padel_sport_match(self):
+        """Padel preference should match padel diff."""
+        from matcher import match_preferences
+
+        diff = _sample_diff(facility="ota", sport="padel")
+        prefs = [
+            {
+                "userId": "alice@test.com",
+                "preferenceId": "p1",
+                "facilityId": "ota",
+                "sport": "padel",
+                "dates": ["2026-06-01"],
+                "timeFrom": "17:00",
+                "timeTo": "22:00",
+            }
+        ]
+        matches = match_preferences(diff, prefs)
+        assert len(matches) == 1
+        assert matches[0]["sport"] == "padel"
+
+    def test_sport_defaults_to_tennis(self):
+        """Preference without sport field defaults to tennis."""
+        from matcher import match_preferences
+
+        diff = _sample_diff(facility="frogner", sport="tennis")
+        prefs = [
+            {
+                "userId": "alice@test.com",
+                "preferenceId": "p1",
+                "facilityId": "frogner",
+                # no sport field — should default to tennis
+                "dates": ["2026-06-01"],
+                "timeFrom": "17:00",
+                "timeTo": "22:00",
+            }
+        ]
+        matches = match_preferences(diff, prefs)
+        assert len(matches) == 1
+        assert matches[0]["sport"] == "tennis"
 
     def test_date_match(self):
         from matcher import match_preferences
@@ -218,6 +291,7 @@ class TestMatcher:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "dates": ["2026-06-01", "2026-06-02"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
@@ -236,6 +310,7 @@ class TestMatcher:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "dates": ["2026-06-02"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
@@ -253,6 +328,7 @@ class TestMatcher:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "dates": ["2026-06-01"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
@@ -270,6 +346,7 @@ class TestMatcher:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "dates": ["2026-06-01"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
@@ -288,6 +365,7 @@ class TestMatcher:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "dates": ["2026-06-01"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
@@ -306,6 +384,7 @@ class TestMatcher:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "dates": ["2026-06-01"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
@@ -322,6 +401,7 @@ class TestMatcher:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "dates": ["2026-06-01"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
@@ -346,6 +426,7 @@ class TestMatcher:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "dates": ["2026-06-01"],
                 "timeFrom": "17:00",
                 "timeTo": "22:00",
@@ -354,6 +435,107 @@ class TestMatcher:
         matches = match_preferences(diff, prefs)
         assert len(matches) == 1
         assert len(matches[0]["courts"]) == 3
+
+    # -- Court type filtering tests --
+
+    def test_court_type_single_filters_correctly(self):
+        """courtType 'single' should only match courts with 'single' in the name."""
+        from matcher import match_preferences
+
+        diff = _sample_diff(
+            facility="ota", sport="padel",
+            courts=["Padel Single 1", "Padel Double 2", "Padel Court 3"],
+        )
+        prefs = [
+            {
+                "userId": "alice@test.com",
+                "preferenceId": "p1",
+                "facilityId": "ota",
+                "sport": "padel",
+                "courtType": "single",
+                "dates": ["2026-06-01"],
+                "timeFrom": "17:00",
+                "timeTo": "22:00",
+            }
+        ]
+        matches = match_preferences(diff, prefs)
+        assert len(matches) == 1
+        assert len(matches[0]["courts"]) == 1
+        assert matches[0]["courts"][0]["court_name"] == "Padel Single 1"
+
+    def test_court_type_double_filters_correctly(self):
+        """courtType 'double' should exclude courts with 'single' in the name."""
+        from matcher import match_preferences
+
+        diff = _sample_diff(
+            facility="ota", sport="padel",
+            courts=["Padel Single 1", "Padel Double 2", "Padel Court 3"],
+        )
+        prefs = [
+            {
+                "userId": "alice@test.com",
+                "preferenceId": "p1",
+                "facilityId": "ota",
+                "sport": "padel",
+                "courtType": "double",
+                "dates": ["2026-06-01"],
+                "timeFrom": "17:00",
+                "timeTo": "22:00",
+            }
+        ]
+        matches = match_preferences(diff, prefs)
+        assert len(matches) == 1
+        assert len(matches[0]["courts"]) == 2
+        court_names = [c["court_name"] for c in matches[0]["courts"]]
+        assert "Padel Double 2" in court_names
+        assert "Padel Court 3" in court_names
+
+    def test_no_court_type_matches_all(self):
+        """No courtType set should match all courts."""
+        from matcher import match_preferences
+
+        diff = _sample_diff(
+            facility="ota", sport="padel",
+            courts=["Padel Single 1", "Padel Double 2", "Padel Court 3"],
+        )
+        prefs = [
+            {
+                "userId": "alice@test.com",
+                "preferenceId": "p1",
+                "facilityId": "ota",
+                "sport": "padel",
+                "dates": ["2026-06-01"],
+                "timeFrom": "17:00",
+                "timeTo": "22:00",
+            }
+        ]
+        matches = match_preferences(diff, prefs)
+        assert len(matches) == 1
+        assert len(matches[0]["courts"]) == 3
+
+    def test_court_type_single_case_insensitive(self):
+        """Court type filtering should be case-insensitive."""
+        from matcher import match_preferences
+
+        diff = _sample_diff(
+            facility="ota", sport="padel",
+            courts=["Padel SINGLE 1", "Padel Double 2"],
+        )
+        prefs = [
+            {
+                "userId": "alice@test.com",
+                "preferenceId": "p1",
+                "facilityId": "ota",
+                "sport": "padel",
+                "courtType": "single",
+                "dates": ["2026-06-01"],
+                "timeFrom": "17:00",
+                "timeTo": "22:00",
+            }
+        ]
+        matches = match_preferences(diff, prefs)
+        assert len(matches) == 1
+        assert matches[0]["courts"][0]["court_name"] == "Padel SINGLE 1"
 
 
 # ===========================================================================
@@ -371,6 +553,7 @@ class TestDedup:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "date": "2026-06-01",
                 "courts": [{"time_slot": "17:00-18:00", "court_name": "Court 1"}],
             }
@@ -383,7 +566,7 @@ class TestDedup:
         from dedup import filter_already_notified
 
         table = dynamo.Table(NOTIFICATIONS_TABLE)
-        key = _dedup_key("alice@test.com", "frogner", "2026-06-01", "17:00-18:00", "Court 1")
+        key = _dedup_key("alice@test.com", "frogner", "tennis", "2026-06-01", "17:00-18:00", "Court 1")
         table.put_item(
             Item={
                 "notificationId": key,
@@ -397,12 +580,42 @@ class TestDedup:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "date": "2026-06-01",
                 "courts": [{"time_slot": "17:00-18:00", "court_name": "Court 1"}],
             }
         ]
         result = filter_already_notified(matches, table)
         assert len(result) == 0
+
+    def test_different_sport_not_deduped(self, dynamo):
+        """Same court at same facility but different sport should not be deduped."""
+        from dedup import filter_already_notified
+
+        table = dynamo.Table(NOTIFICATIONS_TABLE)
+        # Record a tennis notification
+        key = _dedup_key("alice@test.com", "ota", "tennis", "2026-06-01", "17:00-18:00", "Court 1")
+        table.put_item(
+            Item={
+                "notificationId": key,
+                "userId": "alice@test.com",
+                "ttl": int(time.time()) + 86400,
+            }
+        )
+
+        # Now check padel for the same court — should pass through
+        matches = [
+            {
+                "userId": "alice@test.com",
+                "preferenceId": "p1",
+                "facilityId": "ota",
+                "sport": "padel",
+                "date": "2026-06-01",
+                "courts": [{"time_slot": "17:00-18:00", "court_name": "Court 1"}],
+            }
+        ]
+        result = filter_already_notified(matches, table)
+        assert len(result) == 1
 
     def test_record_notifications_writes_items(self, dynamo):
         from dedup import record_notifications
@@ -413,6 +626,7 @@ class TestDedup:
                 "userId": "alice@test.com",
                 "preferenceId": "p1",
                 "facilityId": "frogner",
+                "sport": "tennis",
                 "date": "2026-06-01",
                 "courts": [
                     {"time_slot": "17:00-18:00", "court_name": "Court 1"},
@@ -424,10 +638,38 @@ class TestDedup:
         assert count == 2
 
         # Verify items exist
-        key1 = _dedup_key("alice@test.com", "frogner", "2026-06-01", "17:00-18:00", "Court 1")
+        key1 = _dedup_key("alice@test.com", "frogner", "tennis", "2026-06-01", "17:00-18:00", "Court 1")
         resp = table.get_item(Key={"notificationId": key1})
         assert "Item" in resp
         assert "ttl" in resp["Item"]
+
+    def test_sport_defaults_to_tennis_in_dedup(self, dynamo):
+        """Match dict without sport field should default to tennis for dedup."""
+        from dedup import filter_already_notified
+
+        table = dynamo.Table(NOTIFICATIONS_TABLE)
+        # Record a tennis notification
+        key = _dedup_key("alice@test.com", "frogner", "tennis", "2026-06-01", "17:00-18:00", "Court 1")
+        table.put_item(
+            Item={
+                "notificationId": key,
+                "userId": "alice@test.com",
+                "ttl": int(time.time()) + 86400,
+            }
+        )
+
+        # Match without sport field — should default to tennis and be deduped
+        matches = [
+            {
+                "userId": "alice@test.com",
+                "preferenceId": "p1",
+                "facilityId": "frogner",
+                "date": "2026-06-01",
+                "courts": [{"time_slot": "17:00-18:00", "court_name": "Court 1"}],
+            }
+        ]
+        result = filter_already_notified(matches, table)
+        assert len(result) == 0
 
 
 # ===========================================================================
@@ -466,6 +708,21 @@ class TestEmailBuilder:
         email = build_notification_email("alice@test.com", matches)
         assert "2 new courts" in email["subject"]
 
+    def test_subject_branding(self):
+        """Subject should use 'Availability Monitor' branding."""
+        from email_builder import build_notification_email
+
+        matches = [
+            {
+                "facilityId": "frogner",
+                "date": "2026-06-01",
+                "courts": [{"time_slot": "17:00-18:00", "court_name": "Court 1"}],
+            }
+        ]
+        email = build_notification_email("alice@test.com", matches)
+        assert "Availability Monitor" in email["subject"]
+        assert "Tennis Bot" not in email["subject"]
+
     def test_html_contains_booking_url(self):
         from email_builder import build_notification_email
 
@@ -479,6 +736,22 @@ class TestEmailBuilder:
         email = build_notification_email("alice@test.com", matches)
         assert "facilityId=2259" in email["html_body"]
         assert "date=2026-06-01" in email["html_body"]
+
+    def test_html_booking_url_has_correct_sport_code(self):
+        """Padel matches should produce sport=5 in the booking URL."""
+        from email_builder import build_notification_email
+
+        matches = [
+            {
+                "facilityId": "ota",
+                "sport": "padel",
+                "date": "2026-06-01",
+                "courts": [{"time_slot": "17:00-18:00", "court_name": "Padel 1"}],
+            }
+        ]
+        email = build_notification_email("alice@test.com", matches)
+        assert "sport=5" in email["html_body"]
+        assert "facilityId=1779" in email["html_body"]
 
     def test_text_body_contains_court_info(self):
         from email_builder import build_notification_email
@@ -494,6 +767,21 @@ class TestEmailBuilder:
         assert "Center Court" in email["text_body"]
         assert "19:00-20:00" in email["text_body"]
         assert "OTA" in email["text_body"]
+
+    def test_text_body_branding(self):
+        """Text body footer should use 'Availability Monitor' branding."""
+        from email_builder import build_notification_email
+
+        matches = [
+            {
+                "facilityId": "frogner",
+                "date": "2026-06-01",
+                "courts": [{"time_slot": "17:00-18:00", "court_name": "Court 1"}],
+            }
+        ]
+        email = build_notification_email("alice@test.com", matches)
+        assert "Availability Monitor" in email["text_body"]
+        assert "Tennis Bot" not in email["text_body"]
 
     def test_email_has_all_keys(self):
         from email_builder import build_notification_email
@@ -544,6 +832,7 @@ class TestHandler:
             dates=["2026-06-01"],
             time_from="17:00",
             time_to="22:00",
+            sport="tennis",
         )
 
         diff = _sample_diff()
@@ -566,6 +855,7 @@ class TestHandler:
             preference_id="p2",
             facility_id="ota",
             dates=["2026-06-01"],
+            sport="tennis",
         )
 
         diff = _sample_diff(facility="frogner")
@@ -587,6 +877,7 @@ class TestHandler:
             dates=["2026-06-01"],
             time_from="17:00",
             time_to="22:00",
+            sport="tennis",
         )
 
         diff = _sample_diff()
@@ -607,3 +898,26 @@ class TestHandler:
         response = h.lambda_handler({"diff": _sample_diff()}, None)
         assert "duration_ms" in response["summary"]
         assert isinstance(response["summary"]["duration_ms"], int)
+
+    def test_end_to_end_padel(self, dynamo):
+        """End-to-end test with padel sport."""
+        import handler as h
+
+        _add_user(dynamo, "alice@test.com")
+        _add_preference(
+            dynamo,
+            user_id="alice@test.com",
+            preference_id="p1",
+            facility_id="ota",
+            dates=["2026-06-01"],
+            time_from="17:00",
+            time_to="22:00",
+            sport="padel",
+        )
+
+        diff = _sample_diff(facility="ota", sport="padel")
+        response = h.lambda_handler({"diff": diff}, None)
+
+        assert response["statusCode"] == 200
+        assert response["summary"]["matches_found"] == 1
+        assert response["summary"]["emails_sent"] == 1

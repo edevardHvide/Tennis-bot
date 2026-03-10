@@ -11,6 +11,7 @@ import time
 
 import requests
 from bs4 import BeautifulSoup
+from facilities import SPORT_CODES
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,10 @@ MAX_RETRIES = 3
 BACKOFF_BASE = 1  # seconds
 
 
-def fetch_available_slots(facility_id: int, date_str: str) -> dict[str, list[str]]:
-    """Fetch available slots for a specific facility and date.
+def fetch_available_slots(
+    facility_id: int, date_str: str, sport: str = "tennis"
+) -> dict[str, list[str]]:
+    """Fetch available slots for a specific facility, date, and sport.
 
     Retries up to MAX_RETRIES times with exponential backoff (1s, 2s, 4s) on
     HTTP errors or request timeouts.
@@ -29,6 +32,7 @@ def fetch_available_slots(facility_id: int, date_str: str) -> dict[str, list[str
     Args:
         facility_id: Matchi integer facility ID.
         date_str: Date in YYYY-MM-DD format.
+        sport: Sport name (e.g. "tennis", "padel"). Mapped to Matchi sport code.
 
     Returns:
         Dict mapping time-slot label (e.g. "17:00-18:00") to a list of court
@@ -38,11 +42,12 @@ def fetch_available_slots(facility_id: int, date_str: str) -> dict[str, list[str
     Raises:
         requests.RequestException: after all retry attempts are exhausted.
     """
+    sport_code = str(SPORT_CODES.get(sport, 1))
     params = {
         "wl": "",
         "facilityId": facility_id,
         "date": date_str,
-        "sport": "1",
+        "sport": sport_code,
     }
 
     last_exc: Exception | None = None

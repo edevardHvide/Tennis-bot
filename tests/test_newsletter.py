@@ -22,16 +22,17 @@ from moto import mock_aws
 # Ensure the handler module can be imported regardless of working directory
 # ---------------------------------------------------------------------------
 
-HANDLER_DIR = os.path.join(os.path.dirname(__file__), "..", "lambdas", "newsletter")
-NOTIFICATIONS_DIR = os.path.join(os.path.dirname(__file__), "..", "lambdas", "notifications")
-# matcher.py lives in notifications dir but is copied into newsletter zip at deploy time.
-# For tests we add notifications dir so the import resolves.
-# HANDLER_DIR must be inserted AFTER so it sits at index 0 and takes priority
-# for handler.py and email_builder.py (which exist in both dirs).
-if NOTIFICATIONS_DIR not in sys.path:
-    sys.path.insert(0, NOTIFICATIONS_DIR)
-if HANDLER_DIR not in sys.path:
-    sys.path.insert(0, HANDLER_DIR)
+REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
+HANDLER_DIR = os.path.join(REPO_ROOT, "lambdas", "newsletter")
+NEWSLETTER_PKG_DIR = os.path.join(REPO_ROOT, "lambdas", "newsletter", "package")
+# matcher.py lives in the newsletter package dir (copied from notifications at
+# deploy time).  For tests we add it so the import resolves with the correct
+# day-of-week-based matcher used by the newsletter Lambda.
+# HANDLER_DIR must sit at index 0 so handler.py and email_builder.py are found
+# there first.  Repo root is needed for facilities.py.
+for _dir in (REPO_ROOT, NEWSLETTER_PKG_DIR, HANDLER_DIR):
+    if _dir not in sys.path:
+        sys.path.insert(0, _dir)
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +72,7 @@ def aws_env(monkeypatch):
 
     # Evict cached modules so imports resolve from the newsletter dir
     # (not from notifications dir if test_notifications ran first).
-    for mod_name in ("handler", "email_builder"):
+    for mod_name in ("handler", "email_builder", "matcher"):
         if mod_name in sys.modules:
             del sys.modules[mod_name]
 
@@ -157,7 +158,7 @@ def _add_preference(
     dynamo_resource,
     user_id: str,
     preference_id: str,
-    facility_id: str = "ota",
+    facility_id: str = "ota#tennis",
     days: list[str] | None = None,
     time_from: str = "17:00",
     time_to: str = "22:00",
@@ -222,7 +223,7 @@ class TestHandler:
         import handler as h
 
         # 2026-03-16 is next Monday from FIXED_TODAY
-        _seed_availability(dynamo, "ota", "2026-03-16", {
+        _seed_availability(dynamo, "ota#tennis", "2026-03-16", {
             "17:00-18:00": ["Tennis 1"],
         })
 
@@ -238,10 +239,10 @@ class TestHandler:
         _add_user(dynamo, "alice@test.com")
         _add_preference(
             dynamo, "alice@test.com", "p1",
-            facility_id="ota", days=["monday"],
+            facility_id="ota#tennis", days=["monday"],
             time_from="17:00", time_to="22:00",
         )
-        _seed_availability(dynamo, "ota", "2026-03-16", {
+        _seed_availability(dynamo, "ota#tennis", "2026-03-16", {
             "17:00-18:00": ["Tennis 5 Lexus"],
         })
 
@@ -257,10 +258,10 @@ class TestHandler:
         _add_user(dynamo, "alice@test.com")
         _add_preference(
             dynamo, "alice@test.com", "p1",
-            facility_id="ota", days=["monday"],
+            facility_id="ota#tennis", days=["monday"],
             time_from="17:00", time_to="22:00",
         )
-        _seed_availability(dynamo, "ota", "2026-03-16", {
+        _seed_availability(dynamo, "ota#tennis", "2026-03-16", {
             "08:00-09:00": ["Tennis 1"],
         })
 
@@ -276,11 +277,11 @@ class TestHandler:
         _add_user(dynamo, "alice@test.com")
         _add_preference(
             dynamo, "alice@test.com", "p1",
-            facility_id="ota", days=["friday"],
+            facility_id="ota#tennis", days=["friday"],
             time_from="17:00", time_to="22:00",
         )
         # 2026-03-16 is Monday, preference is Friday only
-        _seed_availability(dynamo, "ota", "2026-03-16", {
+        _seed_availability(dynamo, "ota#tennis", "2026-03-16", {
             "17:00-18:00": ["Tennis 1"],
         })
 
@@ -301,10 +302,10 @@ class TestHandler:
         _add_user(dynamo, "alice@test.com")
         _add_user(dynamo, "bob@test.com")
         _add_preference(dynamo, "alice@test.com", "p1",
-                        facility_id="ota", days=["monday"])
+                        facility_id="ota#tennis", days=["monday"])
         _add_preference(dynamo, "bob@test.com", "p2",
-                        facility_id="ota", days=["monday"])
-        _seed_availability(dynamo, "ota", "2026-03-16", {
+                        facility_id="ota#tennis", days=["monday"])
+        _seed_availability(dynamo, "ota#tennis", "2026-03-16", {
             "17:00-18:00": ["Tennis 1"],
         })
 
@@ -320,10 +321,10 @@ class TestHandler:
         _add_user(dynamo, "alice@test.com")
         _add_user(dynamo, "bob@test.com")
         _add_preference(dynamo, "alice@test.com", "p1",
-                        facility_id="ota", days=["monday"])
+                        facility_id="ota#tennis", days=["monday"])
         _add_preference(dynamo, "bob@test.com", "p2",
-                        facility_id="ota", days=["monday"])
-        _seed_availability(dynamo, "ota", "2026-03-16", {
+                        facility_id="ota#tennis", days=["monday"])
+        _seed_availability(dynamo, "ota#tennis", "2026-03-16", {
             "17:00-18:00": ["Tennis 1"],
         })
 
@@ -335,11 +336,11 @@ class TestHandler:
         """Response summary includes week_start and week_end."""
         import handler as h
 
-        _seed_availability(dynamo, "ota", "2026-03-16", {
+        _seed_availability(dynamo, "ota#tennis", "2026-03-16", {
             "17:00-18:00": ["Tennis 1"],
         })
         _add_preference(dynamo, "alice@test.com", "p1",
-                        facility_id="ota", days=["monday"])
+                        facility_id="ota#tennis", days=["monday"])
 
         response = h.lambda_handler({}, None)
         assert response["summary"]["week_start"] == "2026-03-16"
@@ -357,7 +358,7 @@ class TestEmailBuilder:
 
         matches = [
             {
-                "facilityId": "ota",
+                "facilityId": "ota#tennis",
                 "date": "2026-03-16",
                 "courts": [{"time_slot": "17:00-18:00", "court_name": "Tennis 1"}],
             }
@@ -371,7 +372,7 @@ class TestEmailBuilder:
 
         matches = [
             {
-                "facilityId": "ota",
+                "facilityId": "ota#tennis",
                 "date": "2026-03-16",
                 "courts": [
                     {"time_slot": "17:00-18:00", "court_name": "Tennis 1"},
@@ -387,7 +388,7 @@ class TestEmailBuilder:
 
         matches = [
             {
-                "facilityId": "ota",
+                "facilityId": "ota#tennis",
                 "date": "2026-03-16",
                 "courts": [{"time_slot": "17:00-18:00", "court_name": "Tennis 1"}],
             }
@@ -401,12 +402,12 @@ class TestEmailBuilder:
 
         matches = [
             {
-                "facilityId": "ota",
+                "facilityId": "ota#tennis",
                 "date": "2026-03-16",
                 "courts": [{"time_slot": "17:00-18:00", "court_name": "Tennis 1"}],
             },
             {
-                "facilityId": "ota",
+                "facilityId": "ota#tennis",
                 "date": "2026-03-18",
                 "courts": [{"time_slot": "19:00-20:00", "court_name": "Tennis 2"}],
             },
@@ -425,7 +426,7 @@ class TestEmailBuilder:
 
         matches = [
             {
-                "facilityId": "ota",
+                "facilityId": "ota#tennis",
                 "date": "2026-03-16",
                 "courts": [{"time_slot": "17:00-18:00", "court_name": "Tennis 5 Lexus"}],
             }
@@ -440,7 +441,7 @@ class TestEmailBuilder:
 
         matches = [
             {
-                "facilityId": "ota",
+                "facilityId": "ota#tennis",
                 "date": "2026-03-16",
                 "courts": [{"time_slot": "17:00-18:00", "court_name": "Tennis 1"}],
             }
@@ -448,13 +449,29 @@ class TestEmailBuilder:
         email = build_newsletter_email("alice@test.com", matches, "2026-03-16", "2026-03-22")
         assert "facilityId=1779" in email["html_body"]
         assert "date=2026-03-16" in email["html_body"]
+        assert "sport=1" in email["html_body"]
+
+    def test_html_contains_padel_booking_url(self):
+        from email_builder import build_newsletter_email
+
+        matches = [
+            {
+                "facilityId": "ota#padel",
+                "date": "2026-03-16",
+                "courts": [{"time_slot": "17:00-18:00", "court_name": "Padel 1"}],
+            }
+        ]
+        email = build_newsletter_email("alice@test.com", matches, "2026-03-16", "2026-03-22")
+        assert "facilityId=1779" in email["html_body"]
+        assert "sport=5" in email["html_body"]
+        assert "OTA" in email["html_body"]
 
     def test_text_body_contains_court_info(self):
         from email_builder import build_newsletter_email
 
         matches = [
             {
-                "facilityId": "ota",
+                "facilityId": "ota#tennis",
                 "date": "2026-03-16",
                 "courts": [{"time_slot": "19:00-20:00", "court_name": "Center Court"}],
             }
@@ -469,7 +486,7 @@ class TestEmailBuilder:
 
         matches = [
             {
-                "facilityId": "ota",
+                "facilityId": "ota#tennis",
                 "date": "2026-03-16",
                 "courts": [{"time_slot": "17:00-18:00", "court_name": "Tennis 1"}],
             }
@@ -478,3 +495,21 @@ class TestEmailBuilder:
         assert "subject" in email
         assert "html_body" in email
         assert "text_body" in email
+
+    def test_rebranded_subject_and_footer(self):
+        from email_builder import build_newsletter_email
+
+        matches = [
+            {
+                "facilityId": "ota#tennis",
+                "date": "2026-03-16",
+                "courts": [{"time_slot": "17:00-18:00", "court_name": "Tennis 1"}],
+            }
+        ]
+        email = build_newsletter_email("alice@test.com", matches, "2026-03-16", "2026-03-22")
+        assert "Availability Monitor" in email["subject"]
+        assert "Tennis Bot" not in email["subject"]
+        assert "Availability Monitor Weekly Newsletter" in email["html_body"]
+        assert "Availability Monitor Weekly Newsletter" in email["text_body"]
+        assert "Your Week Ahead" in email["html_body"]
+        assert "Your Week Ahead" in email["text_body"]

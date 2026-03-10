@@ -1,10 +1,16 @@
 """
-AWS Lambda handler — Notification Engine.
+AWS Lambda handler — Notification Engine (multi-sport).
+
+Supports tennis, padel, and other sports defined in ``facilities.py``.
+The scraper diff uses composite keys (``facilityId#sport``) and preferences
+include a ``sport`` field (defaulting to ``"tennis"`` for backwards
+compatibility).
 
 Responsibilities:
-1. Receive the scraper's diff output (new courts per facility/date).
+1. Receive the scraper's diff output (new courts per facility+sport/date).
 2. Query DynamoDB ``tennis-preferences`` to find all user preferences.
-3. Match each user's preferences against the diff.
+3. Match each user's preferences against the diff (facility + sport + date
+   + time window + optional court type filter).
 4. Deduplicate against ``tennis-notifications`` to avoid re-sending.
 5. Send email via AWS SES for every matched, non-duplicate notification.
 6. Record sent notifications in ``tennis-notifications`` with 24h TTL.
