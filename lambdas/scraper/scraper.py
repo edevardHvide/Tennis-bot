@@ -59,7 +59,11 @@ def fetch_available_slots(
         except (requests.RequestException, requests.Timeout) as exc:
             last_exc = exc
             if attempt < MAX_RETRIES - 1:
-                sleep_time = BACKOFF_BASE * (2 ** attempt)
+                # Back off longer on 429 rate-limit responses
+                if hasattr(exc, 'response') and exc.response is not None and exc.response.status_code == 429:
+                    sleep_time = BACKOFF_BASE * (2 ** (attempt + 2))  # 4s, 8s
+                else:
+                    sleep_time = BACKOFF_BASE * (2 ** attempt)        # 1s, 2s
                 logger.warning(
                     "Fetch attempt %d/%d failed for facility %s date %s: %s. "
                     "Retrying in %ds...",

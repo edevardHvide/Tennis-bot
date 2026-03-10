@@ -63,6 +63,9 @@ AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 # consecutive fetch failures.
 CIRCUIT_BREAKER_THRESHOLD = 3
 
+# Throttle: seconds to sleep between HTTP requests to avoid 429s from matchi.se.
+REQUEST_DELAY = 0.5
+
 # ---------------------------------------------------------------------------
 # DynamoDB helpers
 # ---------------------------------------------------------------------------
@@ -214,6 +217,9 @@ def lambda_handler(event: dict, context) -> dict:
 
             # --- Persist new snapshot ---
             save_snapshot(table, composite_key, date_str, curr_slots)
+
+            # Throttle to avoid 429 Too Many Requests from matchi.se
+            time.sleep(REQUEST_DELAY)
 
     # --- Compute diff (new courts only) ---
     diff = build_new_courts_diff(current_snapshot, previous_snapshot)
