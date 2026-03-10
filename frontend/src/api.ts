@@ -21,12 +21,14 @@ export async function registerUser(userId: string, name: string): Promise<void> 
 }
 
 function normalizePreference(p: Record<string, unknown>): Preference {
-  // Backwards compat: legacy items have facilityId (string) instead of facilityIds (array)
-  const facilityIds = (p.facilityIds as string[] | undefined)
-    ?? (p.facilityId ? [p.facilityId as string] : []);
+  // Backwards compat: legacy items may have facilityIds array instead of facilityId string
+  const facilityId = (p.facilityId as string | undefined)
+    ?? ((p.facilityIds as string[] | undefined)?.[0] ?? '');
+  // Backwards compat: legacy items may have "days" instead of "dates"
+  const dates = (p.dates as string[] | undefined) ?? (p.days as string[] | undefined) ?? [];
   // Backwards compat: default sport to 'tennis' if missing (pre-multi-sport records)
   const sport = (p.sport as string | undefined) ?? 'tennis';
-  return { ...p, facilityIds, sport } as unknown as Preference;
+  return { ...p, facilityId, dates, sport } as unknown as Preference;
 }
 
 export async function getPreferences(userId: string): Promise<Preference[]> {
