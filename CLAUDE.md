@@ -175,3 +175,8 @@ email_templates/       base.html, new_courts.html, newsletter.html, etc.
 **Feedback:** `USERS_TABLE`, `FEEDBACK_TABLE`, `GITHUB_TOKEN`, `GITHUB_REPO`
 **Frontend:** `VITE_API_URL` (API Gateway base URL)
 **Local CLI:** `EMAIL_ENABLED`, `BREVO_API_KEY`, `SMTP_*`, `EMAIL_FROM`, `EMAIL_TO`
+
+
+## other
+
+When troubleshooting, append findings to troubleshooting to [text](TROUBLESHOOTING.md), this is a log for earlier troubleshooting that should be checked before doing new troibleshooting. 
