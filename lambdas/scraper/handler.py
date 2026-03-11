@@ -58,6 +58,7 @@ def _log(level: str, message: str, **extra) -> None:
 DAYS_AHEAD = int(os.environ.get("SCRAPER_DAYS_AHEAD", "14"))
 DYNAMODB_TABLE = os.environ.get("DYNAMODB_TABLE", "tennis-availability")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
+NOTIFICATIONS_FUNCTION = os.environ.get("NOTIFICATIONS_FUNCTION", "")
 
 # Circuit breaker: skip remaining dates for a facility after this many
 # consecutive fetch failures.
@@ -71,6 +72,7 @@ REQUEST_DELAY = 0.5
 # ---------------------------------------------------------------------------
 
 _dynamodb_resource = None  # lazily initialised
+_lambda_client = None
 
 
 def _get_dynamodb():
@@ -79,6 +81,14 @@ def _get_dynamodb():
     if _dynamodb_resource is None:
         _dynamodb_resource = boto3.resource("dynamodb", region_name=AWS_REGION)
     return _dynamodb_resource
+
+
+def _get_lambda_client():
+    """Return a boto3 Lambda client, creating it once per container."""
+    global _lambda_client
+    if _lambda_client is None:
+        _lambda_client = boto3.client("lambda", region_name=AWS_REGION)
+    return _lambda_client
 
 
 def load_snapshot(table, facility_key: str, date_str: str) -> dict[str, list[str]]:
@@ -232,6 +242,26 @@ def lambda_handler(event: dict, context) -> dict:
         for courts in slots.values()
     )
 
+    # --- Invoke notifications Lambda with the diff ---
+    notifications_sent = False
+    if diff and NOTIFICATIONS_FUNCTION:
+        try:
+            _log("info", "Invoking notifications Lambda",
+                 function=NOTIFICATIONS_FUNCTION, new_courts=total_new_courts)
+            _get_lambda_client().invoke(
+                FunctionName=NOTIFICATIONS_FUNCTION,
+                InvocationType="Event",  # async — don't wait for response
+                Payload=json.dumps({"diff": diff}),
+            )
+            notifications_sent = True
+        except ClientError as exc:
+            _log("error", "Failed to invoke notifications Lambda",
+                 function=NOTIFICATIONS_FUNCTION, error=str(exc))
+    elif not diff:
+        _log("info", "No new courts — skipping notification invocation")
+    elif not NOTIFICATIONS_FUNCTION:
+        _log("warning", "NOTIFICATIONS_FUNCTION not configured — skipping notification invocation")
+
     total_duration_ms = round((time.monotonic() - invocation_start) * 1000)
 
     _log("info", "Scraper Lambda complete",
@@ -239,6 +269,7 @@ def lambda_handler(event: dict, context) -> dict:
          total_new_courts=total_new_courts,
          fetch_errors=fetch_errors,
          facilities_skipped=facilities_skipped,
+         notifications_sent=notifications_sent,
          duration_ms=total_duration_ms)
 
     return {
@@ -249,6 +280,7 @@ def lambda_handler(event: dict, context) -> dict:
             "total_new_courts": total_new_courts,
             "fetch_errors": fetch_errors,
             "facilities_skipped": facilities_skipped,
+            "notifications_invoked": notifications_sent,
             "duration_ms": total_duration_ms,
             "facilities_checked": [f"{k}#{s}" for k, _, s in facility_sport_pairs],
             "dates_checked": date_strings,
