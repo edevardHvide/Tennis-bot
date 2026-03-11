@@ -6,12 +6,13 @@ SCRAPER_FN    = tennis-scraper
 PREFERENCES_FN = tennis-preferences
 NOTIFICATIONS_FN = tennis-notifications
 NEWSLETTER_FN  = tennis-newsletter
+FEEDBACK_FN    = tennis-feedback
 
 S3_FRONTEND_BUCKET = tennis-bot-frontend
 
 .PHONY: help install deploy-all deploy-scraper deploy-preferences deploy-notifications \
-        deploy-newsletter deploy-frontend package-scraper package-preferences \
-        package-notifications package-newsletter deploy-dynamo validate destroy
+        deploy-newsletter deploy-feedback deploy-frontend package-scraper package-preferences \
+        package-notifications package-newsletter package-feedback deploy-dynamo validate destroy
 
 # ── Help ─────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ help:
 	@echo "  deploy-scraper         Package and deploy scraper Lambda"
 	@echo "  deploy-preferences     Package and deploy preferences Lambda"
 	@echo "  deploy-notifications   Package and deploy notifications Lambda"
+	@echo "  deploy-feedback        Package and deploy feedback Lambda"
 	@echo "  deploy-frontend        Build and sync frontend to S3"
 	@echo "  validate               Run infrastructure smoke tests"
 	@echo "  destroy                Delete all AWS resources (DESTRUCTIVE)"
@@ -82,6 +84,14 @@ package-newsletter:
 	@cd lambdas/newsletter/package && zip -qr ../../../build/newsletter.zip .
 	@echo "   build/newsletter.zip ready"
 
+package-feedback:
+	@echo ">> Packaging feedback Lambda..."
+	@mkdir -p build
+	@cd lambdas/feedback && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
+	@cd lambdas/feedback && cp -r . ./package/ 2>/dev/null || true
+	@cd lambdas/feedback/package && zip -qr ../../../build/feedback.zip .
+	@echo "   build/feedback.zip ready"
+
 # ── Lambda deploy ─────────────────────────────────────────────────────────────
 
 deploy-scraper: package-scraper
@@ -116,6 +126,14 @@ deploy-newsletter: package-newsletter
 		--profile $(PROFILE) --region $(REGION) \
 		--query 'LastUpdateStatus' --output text
 
+deploy-feedback: package-feedback
+	@echo ">> Deploying feedback Lambda..."
+	@aws lambda update-function-code \
+		--function-name $(FEEDBACK_FN) \
+		--zip-file fileb://build/feedback.zip \
+		--profile $(PROFILE) --region $(REGION) \
+		--query 'LastUpdateStatus' --output text
+
 # ── Frontend ──────────────────────────────────────────────────────────────────
 
 CLOUDFRONT_DIST_ID = E2OWR5DUA704T3
@@ -137,7 +155,7 @@ deploy-frontend:
 
 # ── Deploy all ────────────────────────────────────────────────────────────────
 
-deploy-all: deploy-dynamo deploy-scraper deploy-preferences deploy-notifications deploy-newsletter deploy-frontend
+deploy-all: deploy-dynamo deploy-scraper deploy-preferences deploy-notifications deploy-newsletter deploy-feedback deploy-frontend
 	@echo ""
 	@echo "All components deployed."
 
@@ -153,12 +171,12 @@ destroy:
 	@echo "WARNING: This will delete all AWS resources for this project."
 	@read -p "Type 'yes' to confirm: " confirm && [ "$$confirm" = "yes" ]
 	@echo ">> Deleting DynamoDB tables..."
-	@for table in tennis-users tennis-preferences tennis-availability tennis-notifications; do \
+	@for table in tennis-users tennis-preferences tennis-availability tennis-notifications tennis-feedback; do \
 		aws dynamodb delete-table --table-name $$table \
 			--profile $(PROFILE) --region $(REGION) 2>/dev/null && echo "  deleted $$table" || echo "  skipped $$table (not found)"; \
 	done
 	@echo ">> Deleting Lambda functions..."
-	@for fn in $(SCRAPER_FN) $(PREFERENCES_FN) $(NOTIFICATIONS_FN); do \
+	@for fn in $(SCRAPER_FN) $(PREFERENCES_FN) $(NOTIFICATIONS_FN) $(FEEDBACK_FN); do \
 		aws lambda delete-function --function-name $$fn \
 			--profile $(PROFILE) --region $(REGION) 2>/dev/null && echo "  deleted $$fn" || echo "  skipped $$fn (not found)"; \
 	done
