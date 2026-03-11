@@ -158,6 +158,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /feedback:
+    post:
+      summary: Submit a feature request (creates a GitHub issue)
+      operationId: createFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFeedbackRequest"
+            example:
+              userId: "alice@example.com"
+              title: "Add dark mode"
+              description: "It would be great to have a dark mode option."
+      responses:
+        "201":
+          description: Feedback submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackResponse"
+        "400":
+          description: Validation error (missing fields, too long)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limited (too many requests)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   parameters:
     userId:
@@ -320,6 +360,49 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    CreateFeedbackRequest:
+      type: object
+      required:
+        - userId
+        - title
+        - description
+      properties:
+        userId:
+          type: string
+          format: email
+          description: Email of the submitting user
+          example: "alice@example.com"
+        title:
+          type: string
+          description: Short summary of the feature request
+          minLength: 1
+          maxLength: 200
+          example: "Add dark mode"
+        description:
+          type: string
+          description: Detailed description of the feature request
+          minLength: 1
+          maxLength: 2000
+          example: "It would be great to have a dark mode option for the dashboard."
+
+    FeedbackResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            feedbackId:
+              type: string
+              format: uuid
+            message:
+              type: string
+              example: "Feature request submitted successfully"
+            githubIssueUrl:
+              type: string
+              format: uri
+              nullable: true
+              example: "https://github.com/edevardHvide/Tennis-bot/issues/42"
 
     ErrorResponse:
       type: object

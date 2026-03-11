@@ -68,3 +68,12 @@ export async function deletePreference(
     `/users/${encodeURIComponent(userId)}/preferences/${encodeURIComponent(preferenceId)}`
   );
 }
+
+export async function submitFeatureRequest(
+  userId: string,
+  title: string,
+  description: string
+): Promise<{ feedbackId: string; message: string }> {
+  const response = await api.post('/feedback', { userId, title, description });
+  return response.data.data ?? response.data;
+}

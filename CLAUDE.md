@@ -12,13 +12,14 @@ Serverless **multi-sport** court availability monitor. Scrapes [matchi.se](https
 
 ## Architecture
 
-Four AWS Lambda functions + React frontend:
+Five AWS Lambda functions + React frontend:
 
 1. **Scraper** (`lambdas/scraper/`) — EventBridge cron triggers scraping of matchi.se for all facility+sport pairs. Diffs against DynamoDB snapshots, invokes notifications Lambda with new slots. Uses composite keys `facility#sport` (e.g. `"ota#padel"`).
 2. **Preferences API** (`lambdas/preferences/`) — REST CRUD for user notification preferences (facility, sport, court type, dates, time range). Behind API Gateway.
 3. **Notifications** (`lambdas/notifications/`) — Matches scraper diffs against user preferences (facility + sport + day-of-week + time window + court type), deduplicates, sends HTML email via SES.
 4. **Newsletter** (`lambdas/newsletter/`) — Weekly summary email of upcoming availability. Uses shared `matcher.py` from notifications.
-5. **Frontend** (`frontend/`) — React + TypeScript + Vite + Tailwind. Users register by email, select sport (tennis/padel), and manage notification preferences.
+5. **Feedback** (`lambdas/feedback/`) — Receives user feature requests via `POST /feedback`, saves to DynamoDB, and creates GitHub issues with `feature-request` label. Rate-limited to 1 request per user per 5 minutes.
+6. **Frontend** (`frontend/`) — React + TypeScript + Vite + Tailwind. Users register by email, select sport (tennis/padel), manage notification preferences, and submit feature requests.
 
 **Local CLI** (`check_availability.py`) — Standalone polling bot with Windows toast + email alerts. Supports `--sport` and `--court-type` flags.
 
@@ -85,6 +86,7 @@ make deploy-scraper      # Package & deploy scraper Lambda
 make deploy-preferences  # Package & deploy preferences Lambda
 make deploy-notifications # Package & deploy notifications Lambda
 make deploy-newsletter   # Package & deploy newsletter Lambda
+make deploy-feedback     # Package & deploy feedback Lambda
 make deploy-frontend     # Build & sync frontend to S3
 make deploy-dynamo       # Create/verify DynamoDB tables
 
@@ -104,6 +106,7 @@ python scripts/migrate_preferences_sport.py --profile tennis-bot [--dry-run]
 | tennis-preferences | userId | preferenceId | Has `sport` (tennis/padel), `dates` (list of day names like `["monday", "wednesday"]`), and optional `courtType` (double/single) |
 | tennis-availability | facilityId | date | Scraper snapshots. PK uses composite key: `facility#sport` (e.g. `"ota#padel"`) |
 | tennis-notifications | notificationId | — | Dedup with 24h TTL. Hash includes sport for independent dedup |
+| tennis-feedback | feedbackId | — | User feature requests. Backup for GitHub issues |
 
 ## Multi-Sport Key Conventions
 
@@ -122,14 +125,15 @@ lambdas/
   preferences/         handler.py
   notifications/       handler.py, matcher.py, dedup.py, email_builder.py
   newsletter/          handler.py, email_builder.py
+  feedback/            handler.py
 frontend/src/
-  components/          Dashboard, LoginForm, PreferenceForm, PreferenceCard
+  components/          Dashboard, LoginForm, PreferenceForm, PreferenceCard, FeatureRequestModal
   api.ts, types.ts, App.tsx
 scripts/               DynamoDB migration scripts
 infra/
   dynamo/              tables.json, deploy.sh
   api/                 openapi.yaml
-tests/                 test_scraper.py, test_preferences.py, test_notifications.py, test_newsletter.py, test_e2e_pipeline.py
+tests/                 test_scraper.py, test_preferences.py, test_notifications.py, test_newsletter.py, test_e2e_pipeline.py, test_feedback.py
 tests/fixtures/        HTML fixtures for e2e tests (matchi_frogner_*.html, matchi_ota_padel_*.html)
 email_templates/       base.html, new_courts.html, newsletter.html, etc.
 ```
@@ -140,5 +144,6 @@ email_templates/       base.html, new_courts.html, newsletter.html, etc.
 **Preferences:** `USERS_TABLE`, `PREFS_TABLE`
 **Notifications:** `NOTIFICATIONS_TABLE`, `PREFS_TABLE`, `USERS_TABLE`, `SES_FROM_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`
 **Newsletter:** `AVAILABILITY_TABLE`, `PREFS_TABLE`, `USERS_TABLE`, `SES_FROM_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, `NEWSLETTER_TEST_RECIPIENT`
+**Feedback:** `USERS_TABLE`, `FEEDBACK_TABLE`, `GITHUB_TOKEN`, `GITHUB_REPO`
 **Frontend:** `VITE_API_URL` (API Gateway base URL)
 **Local CLI:** `EMAIL_ENABLED`, `BREVO_API_KEY`, `SMTP_*`, `EMAIL_FROM`, `EMAIL_TO`

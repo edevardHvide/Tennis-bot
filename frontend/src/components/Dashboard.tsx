@@ -3,6 +3,7 @@ import type { Preference, PreferenceFormData } from '../types';
 import { getPreferences, createPreference, updatePreference, deletePreference } from '../api';
 import PreferenceCard from './PreferenceCard';
 import PreferenceForm from './PreferenceForm';
+import FeatureRequestModal from './FeatureRequestModal';
 
 interface DashboardProps {
   userId: string;
@@ -15,6 +16,7 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Preference | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const fetchPreferences = useCallback(async () => {
     setLoading(true);
@@ -227,6 +229,26 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
               />
             ))}
           </div>
+        )}
+
+        {/* Feature request */}
+        <div className="mt-12 pt-6 border-t border-gray-200 text-center">
+          <button
+            onClick={() => setShowFeedback(true)}
+            className="text-sm text-gray-500 hover:text-green-600 transition-colors inline-flex items-center gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            Have an idea? Submit a feature request
+          </button>
+        </div>
+
+        {showFeedback && (
+          <FeatureRequestModal
+            userId={userId}
+            onClose={() => setShowFeedback(false)}
+          />
         )}
       </main>
     </div>

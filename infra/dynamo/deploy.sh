@@ -43,6 +43,10 @@ create_table tennis-notifications \
   --attribute-definitions AttributeName=notificationId,AttributeType=S \
   --key-schema AttributeName=notificationId,KeyType=HASH
 
+create_table tennis-feedback \
+  --attribute-definitions AttributeName=feedbackId,AttributeType=S \
+  --key-schema AttributeName=feedbackId,KeyType=HASH
+
 # Enable TTL on notifications (idempotent)
 aws dynamodb update-time-to-live \
   --table-name tennis-notifications \
