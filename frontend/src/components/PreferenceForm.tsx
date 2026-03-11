@@ -167,15 +167,15 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
   const accentColor = sport === 'tennis' ? 'green' : 'blue';
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
         {editing ? 'Edit Preference' : 'Add New Preference'}
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Sport */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Sport
           </label>
           <div className="flex gap-3">
@@ -186,7 +186,7 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
               className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm border transition-colors ${
                 sport === 'tennis'
                   ? 'bg-green-600 text-white border-green-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
               Tennis
@@ -198,7 +198,7 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
               className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm border transition-colors ${
                 sport === 'padel'
                   ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
               Padel
@@ -209,7 +209,7 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
         {/* Court Type (padel only) */}
         {sport === 'padel' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Court Type
             </label>
             <div className="flex gap-3">
@@ -220,7 +220,7 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
                 className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
                   courtType === undefined
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                 }`}
               >
                 Any
@@ -232,7 +232,7 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
                 className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
                   courtType === 'double'
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                 }`}
               >
                 Double
@@ -244,7 +244,7 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
                 className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
                   courtType === 'single'
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                 }`}
               >
                 Single
@@ -255,7 +255,7 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
 
         {/* Facilities (checkboxes) */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {editing ? 'Facility' : 'Facilities'}
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -270,15 +270,15 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
                   className={`relative px-3 py-3 rounded-lg border-2 text-sm font-medium text-center transition-colors ${
                     selected
                       ? accentColor === 'green'
-                        ? 'bg-green-50 border-green-500 text-green-800'
-                        : 'bg-blue-50 border-blue-500 text-blue-800'
-                      : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                        ? 'bg-green-50 dark:bg-green-900/30 border-green-500 text-green-800 dark:text-green-300'
+                        : 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-800 dark:text-blue-300'
+                      : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-600'
                   } ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   {f.displayName}
                   {selected && (
                     <span className={`absolute top-1 right-1 text-xs ${
-                      accentColor === 'green' ? 'text-green-500' : 'text-blue-500'
+                      accentColor === 'green' ? 'text-green-500 dark:text-green-400' : 'text-blue-500 dark:text-blue-400'
                     }`}>
                       ✓
                     </span>
@@ -288,18 +288,18 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
             })}
           </div>
           {!editing && facilityIds.length > 1 && (
-            <p className="mt-1.5 text-xs text-gray-500">
+            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
               One preference will be created per facility.
             </p>
           )}
           {errors.facilityId && (
-            <p className="mt-1 text-sm text-red-600">{errors.facilityId}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.facilityId}</p>
           )}
         </div>
 
         {/* Days of Week */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Days
           </label>
           {/* Quick-select buttons */}
@@ -311,9 +311,9 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
               className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${
                 WEEKDAYS.every((d) => days.includes(d))
                   ? accentColor === 'green'
-                    ? 'bg-green-100 text-green-700 border-green-300'
-                    : 'bg-blue-100 text-blue-700 border-blue-300'
-                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                    ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border-green-300 dark:border-green-800'
+                    : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-800'
+                  : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
               }`}
             >
               Weekdays
@@ -325,9 +325,9 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
               className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${
                 WEEKENDS.every((d) => days.includes(d))
                   ? accentColor === 'green'
-                    ? 'bg-green-100 text-green-700 border-green-300'
-                    : 'bg-blue-100 text-blue-700 border-blue-300'
-                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                    ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border-green-300 dark:border-green-800'
+                    : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-800'
+                  : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
               }`}
             >
               Weekends
@@ -339,9 +339,9 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
               className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${
                 ALL_DAYS.every((d) => days.includes(d))
                   ? accentColor === 'green'
-                    ? 'bg-green-100 text-green-700 border-green-300'
-                    : 'bg-blue-100 text-blue-700 border-blue-300'
-                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                    ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border-green-300 dark:border-green-800'
+                    : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-800'
+                  : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
               }`}
             >
               All
@@ -360,7 +360,7 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
                     ? accentColor === 'green'
                       ? 'bg-green-600 text-white border-green-600'
                       : 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                 }`}
               >
                 {DAY_SHORT_LABELS[day]}
@@ -368,25 +368,25 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
             ))}
           </div>
           {errors.dates && (
-            <p className="mt-1 text-sm text-red-600">{errors.dates}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.dates}</p>
           )}
         </div>
 
         {/* Time Range */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="time-from" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="time-from" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               From
             </label>
             <select
               id="time-from"
               value={timeFrom}
               onChange={(e) => setTimeFrom(e.target.value)}
-              className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 ${
+              className={`w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 ${
                 accentColor === 'green'
                   ? 'focus:ring-green-500 focus:border-green-500'
                   : 'focus:ring-blue-500 focus:border-blue-500'
-              } outline-none bg-white`}
+              } outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100`}
               disabled={loading}
             >
               <option value="">Start time...</option>
@@ -397,22 +397,22 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
               ))}
             </select>
             {errors.timeFrom && (
-              <p className="mt-1 text-sm text-red-600">{errors.timeFrom}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.timeFrom}</p>
             )}
           </div>
           <div>
-            <label htmlFor="time-to" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="time-to" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               To
             </label>
             <select
               id="time-to"
               value={timeTo}
               onChange={(e) => setTimeTo(e.target.value)}
-              className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 ${
+              className={`w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 ${
                 accentColor === 'green'
                   ? 'focus:ring-green-500 focus:border-green-500'
                   : 'focus:ring-blue-500 focus:border-blue-500'
-              } outline-none bg-white`}
+              } outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100`}
               disabled={loading}
             >
               <option value="">End time...</option>
@@ -423,13 +423,13 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
               ))}
             </select>
             {errors.timeTo && (
-              <p className="mt-1 text-sm text-red-600">{errors.timeTo}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.timeTo}</p>
             )}
           </div>
         </div>
 
         {submitError && (
-          <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200">
+          <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm px-4 py-3 rounded-lg border border-red-200 dark:border-red-800">
             {submitError}
           </div>
         )}
@@ -462,7 +462,7 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="px-6 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-6 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             Cancel
           </button>

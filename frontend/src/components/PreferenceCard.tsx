@@ -25,36 +25,36 @@ export default function PreferenceCard({ preference, onEdit, onDelete }: Prefere
   const daysLabel = formatDays(preference.dates);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {getFacilityDisplayName(preference.facilityId)}
             </h3>
             <span
               className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${
                 sport === 'tennis'
-                  ? 'bg-green-100 text-green-700 border border-green-200'
-                  : 'bg-blue-100 text-blue-700 border border-blue-200'
+                  ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
+                  : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
               }`}
             >
               {sport === 'tennis' ? 'Tennis' : 'Padel'}
             </span>
             {preference.courtType && (
-              <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+              <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600">
                 {preference.courtType === 'double' ? 'Double' : 'Single'}
               </span>
             )}
           </div>
-          <p className="text-sm text-green-600 font-medium">
+          <p className="text-sm text-green-600 dark:text-green-400 font-medium">
             {preference.timeFrom} - {preference.timeTo}
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => onEdit(preference)}
-            className="text-gray-400 hover:text-green-600 transition-colors p-1"
+            className="text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors p-1"
             title="Edit"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,7 +64,7 @@ export default function PreferenceCard({ preference, onEdit, onDelete }: Prefere
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="text-gray-400 hover:text-red-600 disabled:text-gray-300 transition-colors p-1"
+            className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 disabled:text-gray-300 dark:disabled:text-gray-600 transition-colors p-1"
             title="Delete"
           >
             {deleting ? (
@@ -82,12 +82,12 @@ export default function PreferenceCard({ preference, onEdit, onDelete }: Prefere
       </div>
 
       <div>
-        <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Days</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Days</p>
         <span
           className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${
             sport === 'tennis'
-              ? 'bg-green-50 text-green-700 border-green-200'
-              : 'bg-blue-50 text-blue-700 border-blue-200'
+              ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
+              : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
           }`}
         >
           {daysLabel}
