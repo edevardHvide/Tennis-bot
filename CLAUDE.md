@@ -33,6 +33,14 @@ facilities = {
     "frogner": {"matchi_id": 2259, "display_name": "Frogner", "sports": ["tennis"]},
     "ota": {"matchi_id": 1779, "display_name": "OTA", "sports": ["tennis", "padel"]},
     "bergentennisarena": {"matchi_id": 301, "display_name": "Bergen Tennis Arena", "sports": ["tennis"]},
+    "voldslokka": {"matchi_id": 642, "display_name": "Voldsløkka", "sports": ["tennis"]},
+    "furuset": {"matchi_id": 542, "display_name": "Furuset", "sports": ["tennis", "padel"]},
+    "interpadel": {"matchi_id": 872, "display_name": "InterPadel Oslo", "sports": ["padel"]},
+    "nordicpadel": {"matchi_id": 811, "display_name": "Nordic Padel", "sports": ["padel"]},
+    "ullern": {"matchi_id": 219, "display_name": "Ullern Tennisklubb", "sports": ["tennis"]},
+    "nordstrand": {"matchi_id": 178, "display_name": "Nordstrand Tennisklubb", "sports": ["tennis"]},
+    "heming": {"matchi_id": 2144, "display_name": "Heming Tennis og Padel", "sports": ["tennis", "padel"]},
+    "holmenkollen": {"matchi_id": 452, "display_name": "Holmenkollen Tennisklubb", "sports": ["tennis"]},
 }
 ```
 

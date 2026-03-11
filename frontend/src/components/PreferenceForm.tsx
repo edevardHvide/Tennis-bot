@@ -258,32 +258,34 @@ export default function PreferenceForm({ editing, onSubmit, onCancel }: Preferen
           <label className="block text-sm font-medium text-gray-700 mb-2">
             {editing ? 'Facility' : 'Facilities'}
           </label>
-          <div className="space-y-2">
-            {filteredFacilities.map((f) => (
-              <label
-                key={f.id}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border cursor-pointer transition-colors ${
-                  facilityIds.includes(f.id)
-                    ? accentColor === 'green'
-                      ? 'bg-green-50 border-green-300'
-                      : 'bg-blue-50 border-blue-300'
-                    : 'bg-white border-gray-200 hover:bg-gray-50'
-                } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <input
-                  type={editing ? 'radio' : 'checkbox'}
-                  checked={facilityIds.includes(f.id)}
-                  onChange={() => toggleFacility(f.id)}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {filteredFacilities.map((f) => {
+              const selected = facilityIds.includes(f.id);
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => toggleFacility(f.id)}
                   disabled={loading}
-                  className={`h-4 w-4 rounded ${
-                    accentColor === 'green'
-                      ? 'text-green-600 focus:ring-green-500'
-                      : 'text-blue-600 focus:ring-blue-500'
-                  } border-gray-300`}
-                />
-                <span className="text-sm font-medium text-gray-800">{f.displayName}</span>
-              </label>
-            ))}
+                  className={`relative px-3 py-3 rounded-lg border-2 text-sm font-medium text-center transition-colors ${
+                    selected
+                      ? accentColor === 'green'
+                        ? 'bg-green-50 border-green-500 text-green-800'
+                        : 'bg-blue-50 border-blue-500 text-blue-800'
+                      : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                  } ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  {f.displayName}
+                  {selected && (
+                    <span className={`absolute top-1 right-1 text-xs ${
+                      accentColor === 'green' ? 'text-green-500' : 'text-blue-500'
+                    }`}>
+                      ✓
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
           {!editing && facilityIds.length > 1 && (
             <p className="mt-1.5 text-xs text-gray-500">
