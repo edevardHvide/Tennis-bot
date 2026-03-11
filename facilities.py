@@ -22,11 +22,6 @@ SPORT_CODES = {"tennis": 1, "padel": 5}
 
 # Active facilities that are currently monitored
 facilities = {
-    "frogner": {
-        "matchi_id": 2259,
-        "display_name": "Frogner",
-        "sports": ["tennis"],
-    },
     "ota": {
         "matchi_id": 1779,
         "display_name": "OTA",
@@ -35,11 +30,6 @@ facilities = {
     "bergentennisarena": {
         "matchi_id": 301,
         "display_name": "Bergen Tennis Arena",
-        "sports": ["tennis"],
-    },
-    "voldslokka": {
-        "matchi_id": 642,
-        "display_name": "Voldsløkka",
         "sports": ["tennis"],
     },
     "furuset": {
@@ -57,14 +47,28 @@ facilities = {
         "display_name": "Nordic Padel",
         "sports": ["padel"],
     },
-    "ullern": {
-        "matchi_id": 219,
-        "display_name": "Ullern Tennisklubb",
-        "sports": ["tennis"],
-    },
     "nordstrand": {
         "matchi_id": 178,
         "display_name": "Nordstrand Tennisklubb",
+        "sports": ["tennis"],
+    },
+}
+
+# Inactive facilities — temporarily disabled to reduce scrape time
+inactive_facilities = {
+    "frogner": {
+        "matchi_id": 2259,
+        "display_name": "Frogner",
+        "sports": ["tennis"],
+    },
+    "voldslokka": {
+        "matchi_id": 642,
+        "display_name": "Voldsløkka",
+        "sports": ["tennis"],
+    },
+    "ullern": {
+        "matchi_id": 219,
+        "display_name": "Ullern Tennisklubb",
         "sports": ["tennis"],
     },
     "heming": {
@@ -78,10 +82,6 @@ facilities = {
         "sports": ["tennis"],
     },
 }
-
-# Inactive facilities (e.g., winter closures, maintenance)
-# These are preserved for reference but not monitored
-inactive_facilities = {}
 
 
 # ---------------------------------------------------------------------------
