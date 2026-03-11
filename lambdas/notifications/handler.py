@@ -20,15 +20,23 @@ Environment variables:
   NOTIFICATIONS_TABLE (default tennis-notifications)
   PREFS_TABLE        (default tennis-preferences)
   USERS_TABLE        (default tennis-users)
-  SES_FROM_EMAIL     (required — verified SES sender)
+  SES_FROM_EMAIL     (fallback SES sender if SMTP is not configured)
+  SMTP_HOST          (e.g. smtp.gmail.com — if set, SMTP is used instead of SES)
+  SMTP_PORT          (default 587)
+  SMTP_USER          (SMTP login username)
+  SMTP_PASS          (SMTP login password)
+  EMAIL_FROM         (sender address for SMTP)
   LOG_LEVEL          (default INFO)
 """
 
 import json
 import logging
 import os
+import smtplib
 import sys
 import time
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 import boto3
 from botocore.exceptions import ClientError
@@ -66,6 +74,13 @@ NOTIFICATIONS_TABLE = os.environ.get("NOTIFICATIONS_TABLE", "tennis-notification
 PREFS_TABLE = os.environ.get("PREFS_TABLE", "tennis-preferences")
 USERS_TABLE = os.environ.get("USERS_TABLE", "tennis-users")
 SES_FROM_EMAIL = os.environ.get("SES_FROM_EMAIL", "")
+
+# SMTP configuration (takes priority over SES when SMTP_HOST is set)
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASS = os.environ.get("SMTP_PASS", "")
+EMAIL_FROM = os.environ.get("EMAIL_FROM", "")
 
 # ---------------------------------------------------------------------------
 # Lazy AWS resource initialisation
@@ -112,6 +127,27 @@ def _scan_all_preferences(table) -> list[dict]:
     return items
 
 
+def _send_smtp_email(recipient: str, subject: str, html_body: str, text_body: str) -> bool:
+    """Send an email via SMTP (e.g. Gmail).  Returns True on success."""
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = EMAIL_FROM
+        msg["To"] = recipient
+        msg.attach(MIMEText(text_body, "plain", "utf-8"))
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.sendmail(EMAIL_FROM, [recipient], msg.as_string())
+        return True
+    except Exception as exc:
+        _log("error", "SMTP send failed",
+             recipient=recipient, error=str(exc))
+        return False
+
+
 def _send_ses_email(recipient: str, subject: str, html_body: str, text_body: str) -> bool:
     """Send an email via SES.  Returns True on success, False on failure."""
     if not SES_FROM_EMAIL:
@@ -136,6 +172,13 @@ def _send_ses_email(recipient: str, subject: str, html_body: str, text_body: str
         _log("error", "SES send_email failed",
              recipient=recipient, error=str(exc))
         return False
+
+
+def _send_email(recipient: str, subject: str, html_body: str, text_body: str) -> bool:
+    """Send an email via SMTP if configured, otherwise fall back to SES."""
+    if SMTP_HOST:
+        return _send_smtp_email(recipient, subject, html_body, text_body)
+    return _send_ses_email(recipient, subject, html_body, text_body)
 
 
 # ---------------------------------------------------------------------------
@@ -206,7 +249,7 @@ def lambda_handler(event: dict, context) -> dict:
     emails_sent = 0
     for user_id, user_match_list in user_matches.items():
         email = build_notification_email(user_id, user_match_list)
-        success = _send_ses_email(
+        success = _send_email(
             recipient=user_id,
             subject=email["subject"],
             html_body=email["html_body"],

@@ -51,6 +51,7 @@ Helpers: `get_matchi_id()`, `get_display_name()`, `get_sports()`, `get_facilitie
 - **Backend:** Python 3.11, requests, beautifulsoup4, boto3, arrow, jinja2
 - **Frontend:** React 19, TypeScript 5.9, Vite 7, Tailwind CSS 4
 - **Infra:** AWS Lambda, DynamoDB (on-demand), API Gateway, EventBridge, SES, S3
+- **Email:** Gmail SMTP (edetennisapp@gmail.com) — if `SMTP_HOST` is set, SMTP is used; otherwise falls back to SES
 - **Region:** eu-north-1
 
 ## Windows: Python Not Found
@@ -128,7 +129,8 @@ scripts/               DynamoDB migration scripts
 infra/
   dynamo/              tables.json, deploy.sh
   api/                 openapi.yaml
-tests/                 test_scraper.py, test_preferences.py, test_notifications.py, test_newsletter.py
+tests/                 test_scraper.py, test_preferences.py, test_notifications.py, test_newsletter.py, test_e2e_pipeline.py
+tests/fixtures/        HTML fixtures for e2e tests (matchi_frogner_*.html, matchi_ota_padel_*.html)
 email_templates/       base.html, new_courts.html, newsletter.html, etc.
 ```
 
@@ -136,7 +138,7 @@ email_templates/       base.html, new_courts.html, newsletter.html, etc.
 
 **Scraper:** `SCRAPER_DAYS_AHEAD` (14), `DYNAMODB_TABLE`, `NOTIFICATIONS_FUNCTION`
 **Preferences:** `USERS_TABLE`, `PREFS_TABLE`
-**Notifications:** `NOTIFICATIONS_TABLE`, `PREFS_TABLE`, `USERS_TABLE`, `SES_FROM_EMAIL`
-**Newsletter:** `AVAILABILITY_TABLE`, `PREFS_TABLE`, `USERS_TABLE`, `SES_FROM_EMAIL`, `NEWSLETTER_TEST_RECIPIENT`
+**Notifications:** `NOTIFICATIONS_TABLE`, `PREFS_TABLE`, `USERS_TABLE`, `SES_FROM_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`
+**Newsletter:** `AVAILABILITY_TABLE`, `PREFS_TABLE`, `USERS_TABLE`, `SES_FROM_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, `NEWSLETTER_TEST_RECIPIENT`
 **Frontend:** `VITE_API_URL` (API Gateway base URL)
 **Local CLI:** `EMAIL_ENABLED`, `BREVO_API_KEY`, `SMTP_*`, `EMAIL_FROM`, `EMAIL_TO`
