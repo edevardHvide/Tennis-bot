@@ -32,7 +32,7 @@ function normalizePreference(p: Record<string, unknown>): Preference {
 }
 
 export async function getPreferences(userId: string): Promise<Preference[]> {
-  const response = await api.get(`/users/${encodeURIComponent(userId)}/preferences`);
+  const response = await api.get(`/users/${userId}/preferences`);
   const raw: Record<string, unknown>[] = response.data.data ?? response.data.preferences ?? response.data ?? [];
   return raw.map(normalizePreference);
 }
@@ -42,7 +42,7 @@ export async function createPreference(
   data: PreferenceFormData
 ): Promise<Preference> {
   const response = await api.post(
-    `/users/${encodeURIComponent(userId)}/preferences`,
+    `/users/${userId}/preferences`,
     data
   );
   return response.data.data ?? response.data;
@@ -54,7 +54,7 @@ export async function updatePreference(
   data: PreferenceFormData
 ): Promise<Preference> {
   const response = await api.put(
-    `/users/${encodeURIComponent(userId)}/preferences/${encodeURIComponent(preferenceId)}`,
+    `/users/${userId}/preferences/${preferenceId}`,
     data
   );
   return response.data.data ?? response.data;
@@ -65,7 +65,7 @@ export async function deletePreference(
   preferenceId: string
 ): Promise<void> {
   await api.delete(
-    `/users/${encodeURIComponent(userId)}/preferences/${encodeURIComponent(preferenceId)}`
+    `/users/${userId}/preferences/${preferenceId}`
   );
 }
 

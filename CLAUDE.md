@@ -74,6 +74,34 @@ source .venv/Scripts/activate
 uv pip install -r requirements.txt
 ```
 
+## IMPORTANT: Do NOT use `encodeURIComponent` on API path params
+
+This API Gateway (HTTP API) does **NOT** decode `%40` back to `@` in path parameters. If you `encodeURIComponent` the userId (email), the Lambda receives the literal `%40` and returns 404. **Always pass email userIds raw** in URL paths — axios/browsers handle `@` in paths fine.
+
+```typescript
+// WRONG — API Gateway passes %40 literally, Lambda can't find user
+`/users/${encodeURIComponent(userId)}/preferences`
+
+// CORRECT — @ passes through fine
+`/users/${userId}/preferences`
+```
+
+## IMPORTANT: Use `uv pip` for installing packages
+
+**NEVER use `pip install` directly** — it will silently fail or not be found on this Windows setup. **ALWAYS use `uv pip install`** instead. This applies everywhere: installing deps, packaging Lambdas, etc.
+
+```bash
+# WRONG — will fail silently
+pip install -r requirements.txt -t ./package
+
+# CORRECT — always use uv pip
+uv pip install -r requirements.txt --target ./package
+```
+
+## IMPORTANT: `make` is not available on Windows
+
+This repo runs on Windows (Git Bash). `make` is NOT installed. When deploying, use manual bash commands instead of `make` targets. See the Makefile for reference on what each target does, then replicate with bash.
+
 ## Key Commands
 
 ```bash
