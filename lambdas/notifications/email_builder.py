@@ -5,9 +5,40 @@ Produces SES-ready email bodies without any template engine dependency
 (no Jinja2).  HTML is built with simple string formatting.
 """
 
+import random
 from datetime import datetime, timezone
 
 from facilities import facilities, get_matchi_id, get_display_name, SPORT_CODES
+
+
+# ---------------------------------------------------------------------------
+# Fun quotes & subject lines
+# ---------------------------------------------------------------------------
+
+_QUOTES = [
+    "The ball is round, the court is open — go get it!",
+    "You miss 100% of the shots you don't book.",
+    "Tennis is the sport in which you talk to yourself, the ball, the racket, and the net.",
+    "Champions keep playing until they get it right. — Billie Jean King",
+    "The most important point in tennis is always the next one.",
+    "In tennis, it is not the opponent you fear, it is the failure itself. — Andre Agassi",
+    "Life is like tennis — the player who serves well seldom loses.",
+    "Good things come to those who book early.",
+    "New balls, please!",
+    "Padel is not just a sport, it's an addiction with glass walls.",
+    "The only bad workout is the one that never happened — book a court!",
+    "Every champion was once a contender who refused to give up. — Rocky Balboa",
+]
+
+_SUBJECT_PREFIXES = [
+    "Game, Set, Match!",
+    "New courts on the radar!",
+    "Court alert!",
+    "Heads up!",
+    "Fresh courts just dropped!",
+    "Racket ready?",
+    "Time to play!",
+]
 
 
 def _booking_url(facility_id: int, date: str, sport: str = "tennis") -> str:
@@ -82,8 +113,9 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
     total_courts = sum(len(m["courts"]) for m in matches)
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
-    # --- Subject ---
-    subject = f"Availability Monitor: {total_courts} new court{'s' if total_courts != 1 else ''} available!"
+    # --- Subject (fun variation) ---
+    prefix = random.choice(_SUBJECT_PREFIXES)
+    subject = f"Availability Monitor: {prefix} {total_courts} new court{'s' if total_courts != 1 else ''} available!"
 
     # --- Group by facility + sport + date for display ---
     # { (facility_key, sport): { date: [court_dicts] } }
@@ -123,6 +155,15 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
 
         html_parts.append("</div>")
 
+    # --- Fun quote ---
+    quote = random.choice(_QUOTES)
+    html_parts.append(
+        f'<div style="border-left:3px solid #2c5f2d; padding:10px 16px; margin:20px 0;'
+        f' background:#f0f9f0; border-radius:0 6px 6px 0; font-style:italic;'
+        f' color:#475569; font-size:14px;">'
+        f"{quote}</div>"
+    )
+
     html_parts.append(_HTML_FOOTER.format(timestamp=timestamp))
     html_body = "\n".join(html_parts)
 
@@ -149,6 +190,8 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
             text_parts.append(f"  Book: {url}")
         text_parts.append("")
 
+    text_parts.append(f'"{quote}"')
+    text_parts.append("")
     text_parts.append(f"-- Availability Monitor | {timestamp}")
     text_body = "\n".join(text_parts)
 
