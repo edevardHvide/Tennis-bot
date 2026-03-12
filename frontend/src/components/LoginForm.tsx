@@ -73,7 +73,7 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
               <path strokeWidth="2" strokeLinecap="round" d="M8 12l2 2 4-4" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Availability Monitor</h1>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">🎾 Availability Monitor</h1>
           <p className="mt-2 text-white drop-shadow">Get alerts when tennis/padel courts become available</p>
         </div>
 
