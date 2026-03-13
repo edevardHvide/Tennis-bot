@@ -9,8 +9,11 @@ A court in the diff matches a preference when:
 """
 
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from facilities import get_matchi_id, get_display_name, SPORT_CODES
+
+OSLO_TZ = ZoneInfo("Europe/Oslo")
 
 
 def _slot_start_time(time_slot: str) -> str:
@@ -20,6 +23,17 @@ def _slot_start_time(time_slot: str) -> str:
     the whole string is returned so that comparisons safely fail-closed.
     """
     return time_slot.split("-")[0].strip()
+
+
+def _is_past_slot(date_str: str, time_slot: str) -> bool:
+    """Return True if the slot's start time is in the past (Europe/Oslo)."""
+    start = _slot_start_time(time_slot)
+    try:
+        slot_dt = datetime.strptime(f"{date_str} {start}", "%Y-%m-%d %H:%M")
+        slot_dt = slot_dt.replace(tzinfo=OSLO_TZ)
+        return slot_dt <= datetime.now(OSLO_TZ)
+    except ValueError:
+        return False
 
 
 def _court_type_matches(court_name: str, court_type: str | None) -> bool:
@@ -113,6 +127,8 @@ def match_preferences(
 
             matched_courts: list[dict] = []
             for time_slot, court_names in date_diff.items():
+                if _is_past_slot(date_str, time_slot):
+                    continue
                 start = _slot_start_time(time_slot)
                 if start >= time_from and start < time_to:
                     for court_name in court_names:
