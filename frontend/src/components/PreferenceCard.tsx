@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import type { Preference } from '../types';
 import { getFacilityDisplayName, formatDays } from '../types';
+import SnakeGame from './SnakeGame';
 
 interface PreferenceCardProps {
   preference: Preference;
+  userId: string;
   onEdit: (preference: Preference) => void;
   onDelete: (preferenceId: string) => void;
 }
 
-export default function PreferenceCard({ preference, onEdit, onDelete }: PreferenceCardProps) {
+export default function PreferenceCard({ preference, userId, onEdit, onDelete }: PreferenceCardProps) {
   const [deleting, setDeleting] = useState(false);
+  const [showGame, setShowGame] = useState(false);
 
   const handleDelete = async () => {
     if (!confirm('Delete this preference?')) return;
@@ -53,6 +56,13 @@ export default function PreferenceCard({ preference, onEdit, onDelete }: Prefere
         </div>
         <div className="flex gap-2">
           <button
+            onClick={(e) => { e.stopPropagation(); setShowGame(true); }}
+            className="text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors p-1"
+            title="Play Snake"
+          >
+            <span className="text-base leading-none">🐍</span>
+          </button>
+          <button
             onClick={() => onEdit(preference)}
             className="text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors p-1"
             title="Edit"
@@ -93,6 +103,10 @@ export default function PreferenceCard({ preference, onEdit, onDelete }: Prefere
           {daysLabel}
         </span>
       </div>
+
+      {showGame && (
+        <SnakeGame userId={userId} onClose={() => setShowGame(false)} />
+      )}
     </div>
   );
 }

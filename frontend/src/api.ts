@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Preference, PreferenceFormData } from './types';
+import type { Preference, PreferenceFormData, HighscoreEntry } from './types';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'https://api.availabilitymonitor.club',
@@ -76,4 +76,14 @@ export async function submitFeatureRequest(
 ): Promise<{ feedbackId: string; message: string }> {
   const response = await api.post('/feedback', { userId, title, description });
   return response.data.data ?? response.data;
+}
+
+export async function submitHighscore(userId: string, playerName: string, score: number): Promise<{ scoreId: string }> {
+  const response = await api.post('/highscores', { userId, playerName, score });
+  return response.data.data ?? response.data;
+}
+
+export async function getHighscores(): Promise<HighscoreEntry[]> {
+  const response = await api.get('/highscores');
+  return response.data.data ?? response.data ?? [];
 }

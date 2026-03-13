@@ -78,6 +78,14 @@ export const FACILITIES: Facility[] = [
   { id: 'holmenkollen', displayName: 'Holmenkollen Tennisklubb', sports: ['tennis'] },
 ];
 
+export interface HighscoreEntry {
+  scoreId: string;
+  userId: string;
+  playerName: string;
+  score: number;
+  createdAt: string;
+}
+
 export function getFacilityDisplayName(facilityId: string): string {
   const facility = FACILITIES.find((f) => f.id === facilityId);
   return facility?.displayName ?? facilityId;

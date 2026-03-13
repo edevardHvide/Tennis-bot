@@ -246,6 +246,7 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
               <PreferenceCard
                 key={pref.preferenceId}
                 preference={pref}
+                userId={userId}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
               />
