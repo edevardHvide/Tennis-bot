@@ -102,10 +102,20 @@ uv pip install -r requirements.txt --target ./package
 
 This repo runs on Windows (Git Bash). `make` is NOT installed. When deploying, use manual bash commands instead of `make` targets. See the Makefile for reference on what each target does, then replicate with bash.
 
+## Testing Policy — Scoped Tests Only
+
+Only run tests relevant to the code that was actually changed. Do **not** run the full test suite by default.
+
+- **Frontend-only changes** (`frontend/`): Run frontend tests/lint only — skip Python tests.
+- **Backend-only changes** (`lambdas/`, `facilities.py`, `tests/`): Run `python -m pytest tests/ -v` — skip frontend.
+- **Both touched**: Run both.
+
+Before running tests, check which files were modified and only run the relevant test commands.
+
 ## Key Commands
 
 ```bash
-# Tests
+# Tests (run only what's relevant — see Testing Policy above)
 python -m pytest tests/ -v
 
 # Build & deploy (see Makefile)
