@@ -438,7 +438,7 @@ class TestEmailBuilder:
         assert "17:00-18:00" in email["html_body"]
         assert "OTA" in email["html_body"]
 
-    def test_html_contains_booking_url(self):
+    def test_html_contains_general_matchi_link(self):
         from email_builder import build_newsletter_email
 
         matches = [
@@ -449,11 +449,11 @@ class TestEmailBuilder:
             }
         ]
         email = build_newsletter_email("alice@test.com", matches, "2026-03-16", "2026-03-22")
-        assert "facilityId=1779" in email["html_body"]
-        assert "date=2026-03-16" in email["html_body"]
-        assert "sport=1" in email["html_body"]
+        assert "https://www.matchi.se" in email["html_body"]
+        assert "Take me to Matchi" in email["html_body"]
+        assert "facilityId=" not in email["html_body"]
 
-    def test_html_contains_padel_booking_url(self):
+    def test_html_contains_preferences_link(self):
         from email_builder import build_newsletter_email
 
         matches = [
@@ -464,8 +464,8 @@ class TestEmailBuilder:
             }
         ]
         email = build_newsletter_email("alice@test.com", matches, "2026-03-16", "2026-03-22")
-        assert "facilityId=1779" in email["html_body"]
-        assert "sport=5" in email["html_body"]
+        assert "https://availabilitymonitor.club" in email["html_body"]
+        assert "Update your preferences" in email["html_body"]
         assert "OTA" in email["html_body"]
 
     def test_text_body_contains_court_info(self):

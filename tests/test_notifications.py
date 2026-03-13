@@ -540,6 +540,62 @@ class TestMatcher:
         assert len(matches) == 1
         assert matches[0]["courts"][0]["court_name"] == "Padel SINGLE 1"
 
+    def test_past_slots_are_filtered_out(self):
+        """Slots in the past (Oslo time) should not match."""
+        from matcher import match_preferences
+
+        # Use yesterday's date — all slots should be filtered
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+
+        yesterday = (
+            datetime.now(ZoneInfo("Europe/Oslo")) - timedelta(days=1)
+        ).strftime("%Y-%m-%d")
+        # yesterday was some day-of-week; use that day name in prefs
+        day_name = datetime.strptime(yesterday, "%Y-%m-%d").strftime("%A").lower()
+
+        diff = _sample_diff(date=yesterday, time_slot="20:00-21:00")
+        prefs = [
+            {
+                "userId": "alice@test.com",
+                "preferenceId": "p1",
+                "facilityId": "frogner",
+                "sport": "tennis",
+                "dates": [day_name],
+                "timeFrom": "00:00",
+                "timeTo": "23:59",
+            }
+        ]
+        matches = match_preferences(diff, prefs)
+        assert len(matches) == 0
+
+    def test_future_slots_are_not_filtered(self):
+        """Slots in the future should still match normally."""
+        from matcher import match_preferences
+
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+
+        tomorrow = (
+            datetime.now(ZoneInfo("Europe/Oslo")) + timedelta(days=1)
+        ).strftime("%Y-%m-%d")
+        day_name = datetime.strptime(tomorrow, "%Y-%m-%d").strftime("%A").lower()
+
+        diff = _sample_diff(date=tomorrow, time_slot="17:00-18:00")
+        prefs = [
+            {
+                "userId": "alice@test.com",
+                "preferenceId": "p1",
+                "facilityId": "frogner",
+                "sport": "tennis",
+                "dates": [day_name],
+                "timeFrom": "17:00",
+                "timeTo": "22:00",
+            }
+        ]
+        matches = match_preferences(diff, prefs)
+        assert len(matches) == 1
+
 
 # ===========================================================================
 # Dedup tests
@@ -726,7 +782,7 @@ class TestEmailBuilder:
         assert "Availability Monitor" in email["subject"]
         assert "Tennis Bot" not in email["subject"]
 
-    def test_html_contains_booking_url(self):
+    def test_html_contains_general_matchi_link(self):
         from email_builder import build_notification_email
 
         matches = [
@@ -737,11 +793,11 @@ class TestEmailBuilder:
             }
         ]
         email = build_notification_email("alice@test.com", matches)
-        assert "facilityId=2259" in email["html_body"]
-        assert "date=2026-06-01" in email["html_body"]
+        assert "https://www.matchi.se" in email["html_body"]
+        assert "Take me to Matchi" in email["html_body"]
+        assert "facilityId=" not in email["html_body"]
 
-    def test_html_booking_url_has_correct_sport_code(self):
-        """Padel matches should produce sport=5 in the booking URL."""
+    def test_html_contains_preferences_link(self):
         from email_builder import build_notification_email
 
         matches = [
@@ -753,8 +809,8 @@ class TestEmailBuilder:
             }
         ]
         email = build_notification_email("alice@test.com", matches)
-        assert "sport=5" in email["html_body"]
-        assert "facilityId=1779" in email["html_body"]
+        assert "https://availabilitymonitor.club" in email["html_body"]
+        assert "Update your preferences" in email["html_body"]
 
     def test_text_body_contains_court_info(self):
         from email_builder import build_notification_email

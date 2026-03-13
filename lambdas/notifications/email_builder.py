@@ -10,6 +10,9 @@ from datetime import datetime, timezone
 
 from facilities import facilities, get_matchi_id, get_display_name, SPORT_CODES
 
+MATCHI_GENERAL_URL = "https://www.matchi.se"
+WEBAPP_URL = "https://availabilitymonitor.club"
+
 
 # ---------------------------------------------------------------------------
 # Fun quotes & subject lines
@@ -140,7 +143,6 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
         html_parts.append(f"<h2>{heading}</h2>")
 
         for date_str, courts in sorted(dates_map.items()):
-            url = _booking_url(matchi_id, date_str, sport)
             html_parts.append(f"<p><strong>{date_str}</strong></p>")
             for court in courts:
                 html_parts.append(
@@ -149,11 +151,26 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
                     f'&mdash; {court["court_name"]}'
                     f"</div>"
                 )
-            html_parts.append(
-                f'<a class="book-link" href="{url}">Book at {name}</a>'
-            )
 
         html_parts.append("</div>")
+
+    # --- General CTA buttons ---
+    html_parts.append(
+        f'<div style="text-align:center; margin:24px 0 16px;">'
+        f'<a class="book-link" href="{MATCHI_GENERAL_URL}" '
+        f'style="display:inline-block; margin-top:8px; padding:12px 28px; '
+        f'background:#2c5f2d; color:#fff; text-decoration:none; border-radius:6px; '
+        f'font-size:15px; font-weight:bold;">'
+        f'Take me to Matchi</a>'
+        f'</div>'
+    )
+    html_parts.append(
+        f'<div style="text-align:center; margin:8px 0 20px;">'
+        f'<a href="{WEBAPP_URL}" '
+        f'style="font-size:12px; color:#666; text-decoration:underline;">'
+        f'Update your preferences</a>'
+        f'</div>'
+    )
 
     # --- Fun quote ---
     quote = random.choice(_QUOTES)
@@ -175,21 +192,21 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
     ]
     for (facility_key, sport), dates_map in sorted(grouped.items()):
         name = _facility_name(facility_key)
-        matchi_id = _facility_matchi_id(facility_key)
         sport_label = sport.title() if sport != "tennis" else ""
         heading = f"{name} — {sport_label}" if sport_label else name
         text_parts.append(heading)
         text_parts.append("-" * len(heading))
         for date_str, courts in sorted(dates_map.items()):
-            url = _booking_url(matchi_id, date_str, sport)
             text_parts.append(f"  {date_str}")
             for court in courts:
                 text_parts.append(
                     f"    {court['time_slot']}  {court['court_name']}"
                 )
-            text_parts.append(f"  Book: {url}")
         text_parts.append("")
 
+    text_parts.append(f"Open Matchi: {MATCHI_GENERAL_URL}")
+    text_parts.append(f"Update preferences: {WEBAPP_URL}")
+    text_parts.append("")
     text_parts.append(f'"{quote}"')
     text_parts.append("")
     text_parts.append(f"-- Availability Monitor | {timestamp}")
