@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import confetti from 'canvas-confetti';
 import type { Preference, PreferenceFormData } from '../types';
 import { getPreferences, createPreference, updatePreference, deletePreference } from '../api';
 import PreferenceCard from './PreferenceCard';
@@ -69,9 +70,13 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
         await createPreference(userId, { ...apiData, facilityId });
       }
     }
+    const isNew = !editing;
     setShowForm(false);
     setEditing(null);
     await fetchPreferences();
+    if (isNew) {
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    }
   };
 
   const handleFormCancel = () => {
