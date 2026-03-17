@@ -23,6 +23,7 @@ help:
 	@echo "  install                Install Python dependencies"
 	@echo "  deploy-all             Deploy everything (infra + lambdas + frontend)"
 	@echo "  deploy-dynamo          Create/verify DynamoDB tables"
+	@echo "  deploy-athena          Deploy Athena DynamoDB connector (for Steep BI)"
 	@echo "  deploy-scraper         Package and deploy scraper Lambda"
 	@echo "  deploy-preferences     Package and deploy preferences Lambda"
 	@echo "  deploy-notifications   Package and deploy notifications Lambda"
@@ -44,6 +45,12 @@ install:
 deploy-dynamo:
 	@echo ">> Provisioning DynamoDB tables..."
 	@bash infra/dynamo/deploy.sh --profile $(PROFILE)
+
+# ── Athena (BI / Steep) ───────────────────────────────────────────────────────
+
+deploy-athena:
+	@echo ">> Deploying Athena DynamoDB Connector..."
+	@bash infra/athena/deploy.sh --profile $(PROFILE)
 
 # ── Lambda packaging ──────────────────────────────────────────────────────────
 
