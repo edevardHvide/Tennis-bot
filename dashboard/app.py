@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 from pyathena import connect
 
 st.set_page_config(
@@ -131,14 +132,42 @@ st.markdown("")
 # Charts row
 c1, c2 = st.columns([1, 1.5])
 
+SPORT_COLORS = {"tennis": "#34d399", "padel": "#fb923c"}
+
 with c1:
     st.markdown("##### Preferences by Sport")
-    st.bar_chart(
-        sport_counts.set_index("sport"),
-        color=["#34d399"],
-        use_container_width=True,
-        height=320,
+    fig = px.pie(
+        sport_counts,
+        values="count",
+        names="sport",
+        color="sport",
+        color_discrete_map=SPORT_COLORS,
+        hole=0.55,
     )
+    fig.update_traces(
+        textinfo="label+percent",
+        textfont_size=14,
+        textfont_color="#e8e8ed",
+        marker=dict(line=dict(color="#08090c", width=2)),
+        hovertemplate="<b>%{label}</b><br>%{value} preferences<br>%{percent}<extra></extra>",
+    )
+    fig.update_layout(
+        showlegend=False,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=10, b=10, l=10, r=10),
+        height=320,
+        annotations=[
+            dict(
+                text=f"<b>{total_prefs}</b><br><span style='font-size:11px;color:#52536a'>total</span>",
+                showarrow=False,
+                font=dict(size=28, color="#e8e8ed"),
+                x=0.5,
+                y=0.5,
+            )
+        ],
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 with c2:
     st.markdown("##### Watchers per Facility")

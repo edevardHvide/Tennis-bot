@@ -1,3 +1,4 @@
 streamlit
 pyathena
 pandas
+plotly
