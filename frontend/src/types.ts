@@ -76,6 +76,8 @@ export const FACILITIES: Facility[] = [
   { id: 'nordstrand', displayName: 'Nordstrand Tennisklubb', sports: ['tennis'] },
   { id: 'heming', displayName: 'Heming Tennis og Padel', sports: ['tennis', 'padel'] },
   { id: 'holmenkollen', displayName: 'Holmenkollen Tennisklubb', sports: ['tennis'] },
+  { id: 'bergenpadelklubb', displayName: 'Bergen Padelklubb', sports: ['padel'] },
+  { id: 'interpadelbergen', displayName: 'InterPadel Bergen (Sandsli)', sports: ['padel'] },
 ];
 
 export interface HighscoreEntry {

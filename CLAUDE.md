@@ -102,6 +102,33 @@ uv pip install -r requirements.txt --target ./package
 
 This repo runs on Windows (Git Bash). `make` is NOT installed. When deploying, use manual bash commands instead of `make` targets. See the Makefile for reference on what each target does, then replicate with bash.
 
+## IMPORTANT: `zip` is not available — use PowerShell instead
+
+Git Bash on this machine does **not** have `zip`. Use PowerShell's `Compress-Archive` to create zip files:
+
+```bash
+# WRONG — zip is not installed
+cd package && zip -r ../function.zip .
+
+# CORRECT — use PowerShell Compress-Archive
+powershell -Command "Compress-Archive -Path 'package/*' -DestinationPath 'function.zip' -Force"
+
+# To add more files to an existing zip (e.g. handler.py on top of dependencies):
+powershell -Command "Compress-Archive -Path 'handler.py' -DestinationPath 'function.zip' -Update"
+```
+
+When packaging Lambdas, the typical pattern is:
+```bash
+# 1. Install deps into package dir
+uv pip install -r requirements.txt --target ./package
+
+# 2. Zip the package dir
+powershell -Command "Compress-Archive -Path 'package/*' -DestinationPath 'build/function.zip' -Force"
+
+# 3. Add handler + shared files
+powershell -Command "Compress-Archive -Path 'handler.py','facilities.py' -DestinationPath 'build/function.zip' -Update"
+```
+
 ## Testing Policy — Scoped Tests Only
 
 Only run tests relevant to the code that was actually changed. Do **not** run the full test suite by default.

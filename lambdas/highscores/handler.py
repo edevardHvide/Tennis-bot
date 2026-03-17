@@ -164,12 +164,18 @@ def get_highscores(event):
     db = _get_dynamodb()
     highscores_table = db.Table(HIGHSCORES_TABLE)
 
-    # Scan all items (table is small — global leaderboard only)
-    response = highscores_table.scan(
-        FilterExpression="leaderboard = :lb",
-        ExpressionAttributeValues={":lb": "GLOBAL"},
-    )
-    items = response.get("Items", [])
+    # Scan all items, handling pagination
+    items = []
+    scan_kwargs = {
+        "FilterExpression": "leaderboard = :lb",
+        "ExpressionAttributeValues": {":lb": "GLOBAL"},
+    }
+    while True:
+        response = highscores_table.scan(**scan_kwargs)
+        items.extend(response.get("Items", []))
+        if "LastEvaluatedKey" not in response:
+            break
+        scan_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
 
     # Sort by score descending, take top N
     items.sort(key=lambda x: int(x.get("score", 0)), reverse=True)

@@ -52,6 +52,16 @@ facilities = {
         "display_name": "Nordstrand Tennisklubb",
         "sports": ["tennis"],
     },
+    "bergenpadelklubb": {
+        "matchi_id": 1659,
+        "display_name": "Bergen Padelklubb",
+        "sports": ["padel"],
+    },
+    "interpadelbergen": {
+        "matchi_id": 948,
+        "display_name": "InterPadel Bergen (Sandsli)",
+        "sports": ["padel"],
+    },
 }
 
 # Inactive facilities — temporarily disabled to reduce scrape time
