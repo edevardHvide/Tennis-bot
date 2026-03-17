@@ -63,6 +63,8 @@ export default function PongGame({ onClose }: PongGameProps) {
   const keysRef = useRef<Set<string>>(new Set());
   const totalPointsRef = useRef(0); // total points scored in game, for speed scaling
   const touchYRef = useRef<number | null>(null);
+  const scoredTimerRef = useRef<number>(0); // countdown frames for scored pause
+  const scoredDirRef = useRef<1 | -1>(1); // ball direction after scored pause
 
   const [playerScore, setPlayerScore] = useState(0);
   const [aiScore, setAiScore] = useState(0);
@@ -205,6 +207,17 @@ export default function PongGame({ onClose }: PongGameProps) {
   }, []);
 
   const update = useCallback(() => {
+    // Handle scored pause — count down then resume
+    if (gameStateRef.current === 'scored') {
+      scoredTimerRef.current -= 1;
+      if (scoredTimerRef.current <= 0) {
+        resetBall(scoredDirRef.current);
+        gameStateRef.current = 'playing';
+        setGameState('playing');
+      }
+      return;
+    }
+
     if (gameStateRef.current !== 'playing') return;
 
     const keys = keysRef.current;
@@ -288,7 +301,11 @@ export default function PongGame({ onClose }: PongGameProps) {
         setGameState('won');
         setWinner('ai');
       } else {
-        resetBall(1); // serve towards player
+        // Pause before next serve (~1.5s at 60fps)
+        scoredTimerRef.current = 90;
+        scoredDirRef.current = 1;
+        gameStateRef.current = 'scored';
+        setGameState('scored');
       }
     }
 
@@ -302,7 +319,11 @@ export default function PongGame({ onClose }: PongGameProps) {
         setGameState('won');
         setWinner('player');
       } else {
-        resetBall(-1); // serve towards AI
+        // Pause before next serve (~1.5s at 60fps)
+        scoredTimerRef.current = 90;
+        scoredDirRef.current = -1;
+        gameStateRef.current = 'scored';
+        setGameState('scored');
       }
     }
   }, [resetBall]);
@@ -405,6 +426,15 @@ export default function PongGame({ onClose }: PongGameProps) {
                 </button>
                 <p className="text-white/60 text-xs mt-3 drop-shadow">Press Space or Enter</p>
               </div>
+            </div>
+          )}
+
+          {/* Scored pause overlay */}
+          {gameState === 'scored' && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="text-white text-3xl font-bold drop-shadow-lg animate-pulse">
+                Point!
+              </p>
             </div>
           )}
 
