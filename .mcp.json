@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "slack": {
+      "type": "http",
+      "url": "https://mcp.slack.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${SLACK_BOT_TOKEN}"
+      }
+    },
+    "athena": {
+      "command": "npx",
+      "args": ["-y", "@lishenxydlgzs/aws-athena-mcp"],
+      "env": {
+        "OUTPUT_S3_PATH": "s3://tennis-bot-athena-605893375372/athena-results/",
+        "AWS_REGION": "eu-north-1",
+        "AWS_PROFILE": "tennis-bot",
+        "ATHENA_WORKGROUP": "primary"
+      }
+    }
+  }
+}
