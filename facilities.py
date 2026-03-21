@@ -52,6 +52,11 @@ facilities = {
         "display_name": "Nordstrand Tennisklubb",
         "sports": ["tennis"],
     },
+    "voldslokka": {
+        "matchi_id": 642,
+        "display_name": "Voldsløkka",
+        "sports": ["tennis"],
+    },
     "bergenpadelklubb": {
         "matchi_id": 1659,
         "display_name": "Bergen Padelklubb",
@@ -69,11 +74,6 @@ inactive_facilities = {
     "frogner": {
         "matchi_id": 2259,
         "display_name": "Frogner",
-        "sports": ["tennis"],
-    },
-    "voldslokka": {
-        "matchi_id": 642,
-        "display_name": "Voldsløkka",
         "sports": ["tennis"],
     },
     "ullern": {
