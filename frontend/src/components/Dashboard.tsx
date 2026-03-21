@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import type { Preference, PreferenceFormData } from '../types';
-import { getPreferences, createPreference, updatePreference, deletePreference } from '../api';
+import { getPreferences, createPreference, updatePreference, deletePreference, getBlacklist, updateBlacklist } from '../api';
 import PreferenceCard from './PreferenceCard';
 import PreferenceForm from './PreferenceForm';
 import FeatureRequestModal from './FeatureRequestModal';
+import BlacklistCalendar from './BlacklistCalendar';
 import { useTheme } from '../useTheme';
 
 interface DashboardProps {
@@ -19,14 +20,20 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Preference | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [blacklistedDates, setBlacklistedDates] = useState<string[]>([]);
+  const [blacklistSaving, setBlacklistSaving] = useState(false);
   const { dark, toggle } = useTheme();
 
   const fetchPreferences = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await getPreferences(userId);
+      const [data, dates] = await Promise.all([
+        getPreferences(userId),
+        getBlacklist(userId),
+      ]);
       setPreferences(data);
+      setBlacklistedDates(dates);
     } catch {
       setError('Failed to load preferences. Please try again.');
     } finally {
@@ -82,6 +89,22 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
   const handleFormCancel = () => {
     setShowForm(false);
     setEditing(null);
+  };
+
+  const handleBlacklistToggle = async (dates: string[]) => {
+    const previous = blacklistedDates;
+    setBlacklistedDates(dates);
+    setBlacklistSaving(true);
+    try {
+      const saved = await updateBlacklist(userId, dates);
+      setBlacklistedDates(saved);
+    } catch {
+      setBlacklistedDates(previous);
+      setError('Failed to update paused dates.');
+      setTimeout(() => setError(''), 4000);
+    } finally {
+      setBlacklistSaving(false);
+    }
   };
 
   return (
@@ -236,6 +259,17 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
                 Create Your First Preference
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Pause alerts calendar */}
+        {!loading && preferences.length > 0 && (
+          <div className="mb-6">
+            <BlacklistCalendar
+              blacklistedDates={blacklistedDates}
+              onToggle={handleBlacklistToggle}
+              saving={blacklistSaving}
+            />
           </div>
         )}
 

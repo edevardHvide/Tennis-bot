@@ -60,6 +60,7 @@ def _court_type_matches(court_name: str, court_type: str | None) -> bool:
 def match_preferences(
     diff: dict[str, dict[str, dict[str, list[str]]]],
     preferences: list[dict],
+    blacklisted_dates: dict[str, set[str]] | None = None,
 ) -> list[dict]:
     """Match scraper diff against user preferences.
 
@@ -123,6 +124,10 @@ def match_preferences(
                 continue
 
             if day_name not in pref_dates:
+                continue
+
+            # Skip dates the user has blacklisted
+            if blacklisted_dates and date_str in blacklisted_dates.get(user_id, set()):
                 continue
 
             matched_courts: list[dict] = []

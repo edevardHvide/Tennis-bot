@@ -69,6 +69,16 @@ export async function deletePreference(
   );
 }
 
+export async function getBlacklist(userId: string): Promise<string[]> {
+  const response = await api.get(`/users/${userId}/blacklist`);
+  return response.data.data?.blacklistedDates ?? [];
+}
+
+export async function updateBlacklist(userId: string, dates: string[]): Promise<string[]> {
+  const response = await api.put(`/users/${userId}/blacklist`, { blacklistedDates: dates });
+  return response.data.data?.blacklistedDates ?? [];
+}
+
 export async function submitFeatureRequest(
   userId: string,
   title: string,

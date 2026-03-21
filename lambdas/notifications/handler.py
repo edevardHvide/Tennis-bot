@@ -232,8 +232,18 @@ def lambda_handler(event: dict, context) -> dict:
     preferences = _scan_all_preferences(prefs_table)
     _log("info", "Loaded preferences", count=len(preferences))
 
+    # Step 1b — Load blacklisted dates per user
+    users_table = dynamo.Table(USERS_TABLE)
+    user_ids = {p["userId"] for p in preferences if p.get("userId")}
+    blacklisted_dates: dict[str, set[str]] = {}
+    for uid in user_ids:
+        result = users_table.get_item(Key={"userId": uid})
+        dates = result.get("Item", {}).get("blacklistedDates", [])
+        if dates:
+            blacklisted_dates[uid] = set(dates)
+
     # Step 2 — Match preferences against diff
-    matches = match_preferences(diff, preferences)
+    matches = match_preferences(diff, preferences, blacklisted_dates)
     _log("info", "Preference matching complete", matches=len(matches))
 
     # Step 3 — Deduplicate

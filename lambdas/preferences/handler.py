@@ -17,7 +17,10 @@ import json
 import os
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+OSLO_TZ = ZoneInfo("Europe/Oslo")
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -332,6 +335,71 @@ def update_preference(event: dict, user_id: str, preference_id: str) -> dict:
     return _ok(item)
 
 
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _validate_blacklist_dates(dates: list) -> list[str]:
+    """Return a list of validation error strings (empty = valid)."""
+    errors = []
+    today = datetime.now(OSLO_TZ).date()
+    max_date = today + timedelta(days=14)
+
+    for d in dates:
+        if not isinstance(d, str) or not _DATE_RE.match(d):
+            errors.append(f"Invalid date format: {d!r}; must be YYYY-MM-DD")
+            continue
+        try:
+            parsed = datetime.strptime(d, "%Y-%m-%d").date()
+        except ValueError:
+            errors.append(f"Invalid date: {d!r}")
+            continue
+        if parsed < today:
+            errors.append(f"Date {d!r} is in the past")
+        elif parsed > max_date:
+            errors.append(f"Date {d!r} is more than 14 days in the future")
+
+    return errors
+
+
+def get_blacklist(event: dict, user_id: str) -> dict:
+    """GET /users/{userId}/blacklist"""
+    if not _user_exists(user_id):
+        return _error(f"User {user_id!r} not found", status=404)
+
+    result = _users_table().get_item(Key={"userId": user_id})
+    dates = list(result.get("Item", {}).get("blacklistedDates", []))
+    return _ok({"blacklistedDates": sorted(dates)})
+
+
+def update_blacklist(event: dict, user_id: str) -> dict:
+    """PUT /users/{userId}/blacklist"""
+    if not _user_exists(user_id):
+        return _error(f"User {user_id!r} not found", status=404)
+
+    try:
+        body = json.loads(event.get("body") or "{}")
+    except (json.JSONDecodeError, TypeError):
+        return _error("Request body must be valid JSON")
+
+    dates = body.get("blacklistedDates")
+    if dates is None:
+        return _error("blacklistedDates is required")
+    if not isinstance(dates, list):
+        return _error("blacklistedDates must be an array")
+
+    errors = _validate_blacklist_dates(dates)
+    if errors:
+        return _error("; ".join(errors))
+
+    unique_dates = sorted(set(dates))
+    _users_table().update_item(
+        Key={"userId": user_id},
+        UpdateExpression="SET blacklistedDates = :d",
+        ExpressionAttributeValues={":d": unique_dates},
+    )
+    return _ok({"blacklistedDates": unique_dates})
+
+
 def delete_preference(event: dict, user_id: str, preference_id: str) -> dict:
     """DELETE /users/{userId}/preferences/{preferenceId}"""
     if not _user_exists(user_id):
@@ -381,6 +449,12 @@ def lambda_handler(event: dict, context) -> dict:
 
         if http_method == "DELETE" and resource == "/users/{userId}/preferences/{preferenceId}":
             return delete_preference(event, user_id, preference_id)
+
+        if http_method == "GET" and resource == "/users/{userId}/blacklist":
+            return get_blacklist(event, user_id)
+
+        if http_method == "PUT" and resource == "/users/{userId}/blacklist":
+            return update_blacklist(event, user_id)
 
         return _error(f"No route for {http_method} {resource}", status=404)
 
