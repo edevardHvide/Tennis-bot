@@ -254,4 +254,4 @@ lambdas/*/package/
 node_modules/
 frontend/dist/
 frontend/build/
-.next/
+.next/.claude/settings.local.json
