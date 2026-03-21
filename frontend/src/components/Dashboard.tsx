@@ -162,6 +162,17 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
           </div>
         )}
 
+        {/* Pause alerts calendar */}
+        {!loading && (
+          <div className="mb-6">
+            <BlacklistCalendar
+              blacklistedDates={blacklistedDates}
+              onToggle={handleBlacklistToggle}
+              saving={blacklistSaving}
+            />
+          </div>
+        )}
+
         {/* Title bar */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Your Preferences</h2>
@@ -259,17 +270,6 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
                 Create Your First Preference
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Pause alerts calendar */}
-        {!loading && preferences.length > 0 && (
-          <div className="mb-6">
-            <BlacklistCalendar
-              blacklistedDates={blacklistedDates}
-              onToggle={handleBlacklistToggle}
-              saving={blacklistSaving}
-            />
           </div>
         )}
 
