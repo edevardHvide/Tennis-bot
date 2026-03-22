@@ -120,7 +120,7 @@ def save_snapshot(
                 "facilityId": facility_key,
                 "date": date_str,
                 "slots": json.dumps(slots),
-                "updatedAt": datetime.datetime.utcnow().isoformat(),
+                "updatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             }
         )
     except ClientError as exc:
