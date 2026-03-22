@@ -26,6 +26,10 @@ function getEasterSunday(year: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+function getAprilFools(year: number): string {
+  return `${year}-04-01`;
+}
+
 function getDayLabel(dateStr: string): { short: string; num: string } {
   const d = new Date(dateStr + 'T12:00:00');
   return {
@@ -52,11 +56,13 @@ export default function BlacklistCalendar({ blacklistedDates, onToggle, saving }
   const days = getNext14Days();
   const blacklistSet = new Set(blacklistedDates);
 
-  // Easter Sunday for current year and next (in case we're near year boundary)
+  // Easter-related dates for current year and next
   const now = new Date();
   const easterDates = new Set([
     getEasterSunday(now.getFullYear()),
     getEasterSunday(now.getFullYear() + 1),
+    getAprilFools(now.getFullYear()),
+    getAprilFools(now.getFullYear() + 1),
   ]);
 
   const handleToggle = (dateStr: string) => {
