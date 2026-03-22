@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AvailabilityResponse, AvailabilitySlot } from '../types';
-import { DAY_SHORT_LABELS, type DayOfWeek } from '../types';
+import { DAY_SHORT_LABELS, getFacilityDisplayName, type DayOfWeek } from '../types';
 import { getAvailability } from '../api';
 
 interface Props {
@@ -56,6 +56,7 @@ export default function AvailabilityCalendar({ userId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(true);
+  const [tooltip, setTooltip] = useState<{ slot: AvailabilitySlot; x: number; y: number } | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -205,13 +206,17 @@ export default function AvailabilityCalendar({ userId }: Props) {
                             {cellSlots.map((slot, i) => (
                               <div
                                 key={i}
-                                className="text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate max-w-full"
+                                className="text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate max-w-full cursor-default"
                                 style={{
                                   backgroundColor: `${FACILITY_COLORS[slot.facilityId] ?? '#6b7280'}20`,
                                   color: FACILITY_COLORS[slot.facilityId] ?? '#6b7280',
                                   border: `1px solid ${FACILITY_COLORS[slot.facilityId] ?? '#6b7280'}40`,
                                 }}
-                                title={`${slot.courtName} at ${slot.facilityId} (${slot.sport})`}
+                                onMouseEnter={(e) => {
+                                  const rect = (e.target as HTMLElement).getBoundingClientRect();
+                                  setTooltip({ slot, x: rect.left + rect.width / 2, y: rect.top });
+                                }}
+                                onMouseLeave={() => setTooltip(null)}
                               >
                                 {slot.courtName}
                               </div>
@@ -238,6 +243,18 @@ export default function AvailabilityCalendar({ userId }: Props) {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Hover tooltip */}
+      {tooltip && (
+        <div
+          className="fixed z-50 pointer-events-none px-3 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs"
+          style={{ left: tooltip.x, top: tooltip.y, transform: 'translate(-50%, -100%) translateY(-8px)' }}
+        >
+          <div className="font-semibold text-gray-900 dark:text-gray-100">{tooltip.slot.courtName}</div>
+          <div className="text-gray-500 dark:text-gray-400 mt-0.5">{getFacilityDisplayName(tooltip.slot.facilityId)}</div>
+          <div className="text-gray-500 dark:text-gray-400">{tooltip.slot.sport.charAt(0).toUpperCase() + tooltip.slot.sport.slice(1)} · {tooltip.slot.timeSlot}</div>
         </div>
       )}
     </div>
