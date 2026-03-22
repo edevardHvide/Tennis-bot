@@ -7,10 +7,12 @@ Routing:
   POST   /users/{userId}/preferences               -> create_preference
   PUT    /users/{userId}/preferences/{preferenceId}  -> update_preference
   DELETE /users/{userId}/preferences/{preferenceId}  -> delete_preference
+  GET    /users/{userId}/availability               -> get_availability
 
 DynamoDB tables (eu-north-1):
   tennis-users        PK: userId
   tennis-preferences  PK: userId, SK: preferenceId
+  tennis-availability PK: facilityId (composite), SK: date
 """
 
 import json
@@ -25,7 +27,7 @@ OSLO_TZ = ZoneInfo("Europe/Oslo")
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from facilities import facilities, get_sports
+from facilities import facilities, get_display_name, get_sports
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -34,6 +36,7 @@ from facilities import facilities, get_sports
 REGION = os.environ.get("AWS_REGION", "eu-north-1")
 USERS_TABLE = os.environ.get("USERS_TABLE", "tennis-users")
 PREFS_TABLE = os.environ.get("PREFS_TABLE", "tennis-preferences")
+AVAILABILITY_TABLE = os.environ.get("AVAILABILITY_TABLE", "tennis-availability")
 
 VALID_FACILITY_IDS = set(facilities.keys())
 VALID_SPORTS = {"tennis", "padel"}
@@ -63,6 +66,10 @@ def _users_table():
 
 def _prefs_table():
     return _get_dynamodb().Table(PREFS_TABLE)
+
+
+def _availability_table():
+    return _get_dynamodb().Table(AVAILABILITY_TABLE)
 
 
 # ---------------------------------------------------------------------------
@@ -421,6 +428,139 @@ def delete_preference(event: dict, user_id: str, preference_id: str) -> dict:
     return _ok({"deleted": True})
 
 
+WEEKDAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+SCRAPER_INTERVAL_MINUTES = 15
+
+
+def get_availability(event: dict, user_id: str) -> dict:
+    """GET /users/{userId}/availability
+
+    Returns court availability for the next 7 days, filtered by the user's
+    preferences (facility, sport, day-of-week, time window, court type).
+    Includes freshness metadata per facility.
+    """
+    if not _user_exists(user_id):
+        return _error(f"User {user_id!r} not found", status=404)
+
+    prefs = _prefs_table().query(
+        KeyConditionExpression=Key("userId").eq(user_id)
+    ).get("Items", [])
+
+    if not prefs:
+        return _ok({"days": [], "facilities": [], "freshness": {}})
+
+    now_oslo = datetime.now(OSLO_TZ)
+    today = now_oslo.date()
+    avail_table = _availability_table()
+
+    # Collect unique facility#sport keys and build preference lookup
+    facility_sport_keys = set()
+    for p in prefs:
+        sport = p.get("sport", "tennis")
+        key = f"{p['facilityId']}#{sport}"
+        facility_sport_keys.add(key)
+
+    # Query availability for each facility#sport for the next 7 days
+    raw_availability = {}  # {facility#sport: {date: slots_dict}}
+    freshness = {}  # {facility#sport: {updatedAt, ...}}
+
+    for fs_key in facility_sport_keys:
+        raw_availability[fs_key] = {}
+        for day_offset in range(7):
+            date_str = (today + timedelta(days=day_offset)).isoformat()
+            result = avail_table.get_item(
+                Key={"facilityId": fs_key, "date": date_str}
+            )
+            if "Item" in result:
+                item = result["Item"]
+                slots_raw = item.get("slots", "{}")
+                try:
+                    slots = json.loads(slots_raw) if isinstance(slots_raw, str) else slots_raw
+                except (json.JSONDecodeError, TypeError):
+                    slots = {}
+                raw_availability[fs_key][date_str] = slots
+                updated_at = item.get("updatedAt", "")
+                if fs_key not in freshness or updated_at > freshness.get(fs_key, {}).get("updatedAt", ""):
+                    freshness[fs_key] = {"updatedAt": updated_at}
+
+    # Build calendar: 7 days, each with matched slots
+    days = []
+    for day_offset in range(7):
+        date_obj = today + timedelta(days=day_offset)
+        date_str = date_obj.isoformat()
+        weekday = WEEKDAY_NAMES[date_obj.weekday()]
+
+        day_slots = []  # slots for this day across all preferences
+
+        for p in prefs:
+            pref_days = [d.lower() for d in p.get("dates", [])]
+            if weekday not in pref_days:
+                continue
+
+            sport = p.get("sport", "tennis")
+            fs_key = f"{p['facilityId']}#{sport}"
+            time_from = p.get("timeFrom", "00:00")
+            time_to = p.get("timeTo", "23:59")
+            court_type = p.get("courtType")
+
+            date_slots = raw_availability.get(fs_key, {}).get(date_str, {})
+
+            for time_slot, courts in sorted(date_slots.items()):
+                slot_start = time_slot.split("-")[0].strip()
+                if slot_start < time_from or slot_start >= time_to:
+                    continue
+
+                for court_name in courts:
+                    # Court type filtering for padel
+                    if court_type:
+                        is_single = "single" in court_name.lower()
+                        if court_type == "single" and not is_single:
+                            continue
+                        if court_type == "double" and is_single:
+                            continue
+
+                    day_slots.append({
+                        "facilityId": p["facilityId"],
+                        "sport": sport,
+                        "timeSlot": time_slot,
+                        "courtName": court_name,
+                    })
+
+        days.append({
+            "date": date_str,
+            "weekday": weekday,
+            "slots": day_slots,
+        })
+
+    # Build facility list for legend
+    facility_info = []
+    seen = set()
+    for p in prefs:
+        fid = p["facilityId"]
+        if fid not in seen:
+            seen.add(fid)
+            try:
+                display = get_display_name(fid)
+            except KeyError:
+                display = fid
+            facility_info.append({"facilityId": fid, "displayName": display})
+
+    # Compute next update time (scraper runs every 15 min)
+    minutes_since = now_oslo.minute % SCRAPER_INTERVAL_MINUTES
+    next_update = now_oslo.replace(second=0, microsecond=0) + timedelta(
+        minutes=SCRAPER_INTERVAL_MINUTES - minutes_since
+    )
+
+    return _ok({
+        "days": days,
+        "facilities": facility_info,
+        "freshness": {k: v for k, v in freshness.items()},
+        "nextUpdateAt": next_update.isoformat(),
+        "generatedAt": now_oslo.isoformat(),
+    })
+
+
 # ---------------------------------------------------------------------------
 # Router
 # ---------------------------------------------------------------------------
@@ -449,6 +589,9 @@ def lambda_handler(event: dict, context) -> dict:
 
         if http_method == "DELETE" and resource == "/users/{userId}/preferences/{preferenceId}":
             return delete_preference(event, user_id, preference_id)
+
+        if http_method == "GET" and resource == "/users/{userId}/availability":
+            return get_availability(event, user_id)
 
         if http_method == "GET" and resource == "/users/{userId}/blacklist":
             return get_blacklist(event, user_id)

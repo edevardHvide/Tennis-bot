@@ -84,6 +84,32 @@ export interface HighscoreEntry {
   createdAt: string;
 }
 
+export interface AvailabilitySlot {
+  facilityId: string;
+  sport: Sport;
+  timeSlot: string;
+  courtName: string;
+}
+
+export interface AvailabilityDay {
+  date: string;
+  weekday: DayOfWeek;
+  slots: AvailabilitySlot[];
+}
+
+export interface FacilityInfo {
+  facilityId: string;
+  displayName: string;
+}
+
+export interface AvailabilityResponse {
+  days: AvailabilityDay[];
+  facilities: FacilityInfo[];
+  freshness: Record<string, { updatedAt: string }>;
+  nextUpdateAt: string;
+  generatedAt: string;
+}
+
 export function getFacilityDisplayName(facilityId: string): string {
   const facility = FACILITIES.find((f) => f.id === facilityId);
   return facility?.displayName ?? facilityId;

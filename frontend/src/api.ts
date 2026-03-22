@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Preference, PreferenceFormData, HighscoreEntry } from './types';
+import type { Preference, PreferenceFormData, HighscoreEntry, AvailabilityResponse } from './types';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'https://api.availabilitymonitor.club',
@@ -77,6 +77,11 @@ export async function getBlacklist(userId: string): Promise<string[]> {
 export async function updateBlacklist(userId: string, dates: string[]): Promise<string[]> {
   const response = await api.put(`/users/${userId}/blacklist`, { blacklistedDates: dates });
   return response.data.data?.blacklistedDates ?? [];
+}
+
+export async function getAvailability(userId: string): Promise<AvailabilityResponse> {
+  const response = await api.get(`/users/${userId}/availability`);
+  return response.data.data ?? response.data;
 }
 
 export async function submitFeatureRequest(

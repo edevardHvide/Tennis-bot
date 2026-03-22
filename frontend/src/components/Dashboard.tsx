@@ -6,6 +6,7 @@ import PreferenceCard from './PreferenceCard';
 import PreferenceForm from './PreferenceForm';
 import FeatureRequestModal from './FeatureRequestModal';
 import BlacklistCalendar from './BlacklistCalendar';
+import AvailabilityCalendar from './AvailabilityCalendar';
 import { useTheme } from '../useTheme';
 
 interface DashboardProps {
@@ -170,6 +171,13 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
               onToggle={handleBlacklistToggle}
               saving={blacklistSaving}
             />
+          </div>
+        )}
+
+        {/* Availability calendar */}
+        {!loading && preferences.length > 0 && (
+          <div className="mb-6">
+            <AvailabilityCalendar userId={userId} />
           </div>
         )}
 
