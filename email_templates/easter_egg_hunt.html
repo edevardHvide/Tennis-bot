@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Easter Egg Hunt — Availability Monitor{% endblock %}
+
+{% block header_title %}The Hunt Is On{% endblock %}
+{% block header_subtitle %}Something is hidden. Can you find it?{% endblock %}
+
+{% block content %}
+
+<p class="content-lead">
+    Hey <strong>{{ user_name }}</strong>,
+</p>
+
+<p style="font-size: 15px; color: #334155; line-height: 1.8; margin-bottom: 20px;">
+    We've hidden an <strong>Easter Egg</strong> somewhere on
+    <a href="https://availabilitymonitor.club" style="color: #0ea5e9; font-weight: 600;">availabilitymonitor.club</a>.
+    It's small. It's sneaky. And it's been sitting there this whole time, waiting for someone sharp enough to spot it.
+</p>
+
+<div style="background: linear-gradient(135deg, #fef9c3, #fef08a); border: 1px solid #fde68a; border-radius: 12px; padding: 20px 24px; margin: 24px 0; text-align: center;">
+    <div style="font-size: 36px; margin-bottom: 10px;">🏆🎾🔍</div>
+    <p style="font-size: 16px; font-weight: 700; color: #713f12; margin-bottom: 8px;">
+        The Prize: Premium First Serve
+    </p>
+    <p style="font-size: 14px; color: #92400e; line-height: 1.7;">
+        The <strong>first person</strong> to find the Easter Egg and reply to this email with a screenshot
+        wins <strong>Premium First Serve</strong> access &mdash; your court alerts will arrive
+        <strong>2 minutes before everyone else</strong>. That's the difference between getting the court
+        and getting the waitlist.
+    </p>
+</div>
+
+<div class="quote-block">
+    <p>
+        <strong>Your only clue:</strong><br>
+        "The answer is smaller than you think. Look where things end, not where they begin."
+    </p>
+</div>
+
+<p style="font-size: 15px; color: #334155; line-height: 1.8; margin-bottom: 20px;">
+    No hints. No mercy. This is tennis &mdash; you earn your advantage.
+</p>
+
+<p style="font-size: 14px; color: #64748b; line-height: 1.7; margin-bottom: 24px;">
+    When you find it, you'll know. Screenshot the proof and reply to this email.
+    First valid reply wins. Second place is just first loser. 😏
+</p>
+
+<div class="cta-wrap" style="margin-bottom: 8px;">
+    <a href="https://availabilitymonitor.club" class="cta-button">
+        Start Hunting
+    </a>
+</div>
+
+<p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 16px;">
+    Good luck. You're going to need it.
+</p>
+
+{% endblock %}
