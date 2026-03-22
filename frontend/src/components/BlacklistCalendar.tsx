@@ -1,9 +1,29 @@
 import { useState } from 'react';
+import EasterEgg, { fireConfetti } from './EasterEgg';
 
 interface BlacklistCalendarProps {
   blacklistedDates: string[];
   onToggle: (dates: string[]) => void;
   saving: boolean;
+}
+
+/** Compute Easter Sunday for a given year (Anonymous Gregorian algorithm) */
+function getEasterSunday(year: number): string {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 function getDayLabel(dateStr: string): { short: string; num: string } {
@@ -27,8 +47,17 @@ function getNext14Days(): string[] {
 
 export default function BlacklistCalendar({ blacklistedDates, onToggle, saving }: BlacklistCalendarProps) {
   const [open, setOpen] = useState(false);
+  const [bunnyVisible, setBunnyVisible] = useState(false);
+  const [eggFound, setEggFound] = useState(false);
   const days = getNext14Days();
   const blacklistSet = new Set(blacklistedDates);
+
+  // Easter Sunday for current year and next (in case we're near year boundary)
+  const now = new Date();
+  const easterDates = new Set([
+    getEasterSunday(now.getFullYear()),
+    getEasterSunday(now.getFullYear() + 1),
+  ]);
 
   const handleToggle = (dateStr: string) => {
     const next = new Set(blacklistSet);
@@ -38,6 +67,17 @@ export default function BlacklistCalendar({ blacklistedDates, onToggle, saving }
       next.add(dateStr);
     }
     onToggle(Array.from(next).sort());
+
+    // If they just blacklisted Easter Sunday, release the bunny!
+    if (!blacklistSet.has(dateStr) && easterDates.has(dateStr)) {
+      setBunnyVisible(true);
+    }
+  };
+
+  const handleBunnyClick = () => {
+    setBunnyVisible(false);
+    setEggFound(true);
+    fireConfetti();
   };
 
   return (
@@ -81,13 +121,14 @@ export default function BlacklistCalendar({ blacklistedDates, onToggle, saving }
             {days.map((dateStr) => {
               const { short, num } = getDayLabel(dateStr);
               const paused = blacklistSet.has(dateStr);
+              const isEaster = easterDates.has(dateStr);
               return (
                 <button
                   key={dateStr}
                   onClick={() => handleToggle(dateStr)}
                   disabled={saving}
                   title={dateStr}
-                  className={`flex flex-col items-center py-2 px-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+                  className={`relative flex flex-col items-center py-2 px-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
                     paused
                       ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 ring-1 ring-amber-400 dark:ring-amber-600'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -95,6 +136,9 @@ export default function BlacklistCalendar({ blacklistedDates, onToggle, saving }
                 >
                   <span className="font-semibold">{short}</span>
                   <span className="mt-0.5 opacity-80">{num}</span>
+                  {isEaster && (
+                    <span className="absolute -top-1 -right-1 text-[10px] opacity-40">🐰</span>
+                  )}
                 </button>
               );
             })}
@@ -106,6 +150,20 @@ export default function BlacklistCalendar({ blacklistedDates, onToggle, saving }
           )}
         </div>
       )}
+
+      {/* Floating bunny that bounces in after Easter Sunday is blacklisted */}
+      {bunnyVisible && (
+        <button
+          onClick={handleBunnyClick}
+          className="fixed z-40 text-4xl cursor-pointer animate-bounce"
+          style={{ bottom: '20%', right: '10%' }}
+          title=""
+        >
+          🐰
+        </button>
+      )}
+
+      <EasterEgg visible={eggFound} onClose={() => setEggFound(false)} />
     </div>
   );
 }

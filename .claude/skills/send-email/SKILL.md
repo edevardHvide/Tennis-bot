@@ -19,7 +19,9 @@ Ask the user for:
 
 ### Step 2: Compose the HTML Body
 
-Write the inner body HTML content to a temp file. Use the branded design system classes available in the email template:
+Write the inner body HTML content to a temp file. Use the branded design system classes available in the email template.
+
+**CRITICAL — Mobile email compatibility:** Always duplicate key CSS properties as inline `style` attributes on every element. Mobile email clients (Gmail app, iOS Mail dark mode, etc.) strip `<style>` blocks entirely, leaving only inline styles. Without them, text becomes invisible (e.g. white on yellow). Every example below includes the required inline styles — follow them exactly.
 
 **Text elements:**
 - `<p class="content-lead">` — Opening paragraph (use `{{NAME}}` for personalization, e.g. `Hey <strong>{{NAME}}</strong>,`)
@@ -27,33 +29,42 @@ Write the inner body HTML content to a temp file. Use the branded design system 
 - `<p>`, `<ul>`, `<ol>` — Standard body text and lists
 
 **Feature cards** (colored header + body):
+
+IMPORTANT: Always include inline `style` attributes on feature card elements. Mobile email clients strip `<style>` blocks, causing invisible text (e.g. white on yellow). The inline styles are the only reliable way to ensure correct colors on mobile.
+
+Color variants with their inline styles:
+- **green**: `background: linear-gradient(90deg, #f0fdf4, #dcfce7);`
+- **blue**: `background: linear-gradient(90deg, #eff6ff, #dbeafe);`
+- **amber**: `background: linear-gradient(90deg, #fffbeb, #fef3c7);`
+- **purple**: `background: linear-gradient(90deg, #faf5ff, #f3e8ff);`
+
 ```html
-<div class="feature-card">
-    <div class="feature-header green">  <!-- variants: green, blue, amber, purple -->
-        <span class="feature-icon">&#128640;</span>
-        <span class="feature-title">FEATURE TITLE</span>
+<div class="feature-card" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
+    <div class="feature-header green" style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; background: linear-gradient(90deg, #f0fdf4, #dcfce7);">
+        <span class="feature-icon" style="font-size: 22px;">&#128640;</span>
+        <span class="feature-title" style="font-size: 14px; font-weight: 700; color: #0f172a;">FEATURE TITLE</span>
     </div>
-    <div class="feature-body">
+    <div class="feature-body" style="padding: 14px 20px; background-color: #ffffff; font-size: 14px; color: #475569; line-height: 1.7;">
         Description text here.
     </div>
 </div>
 ```
 
-**Callout boxes:**
+**Callout boxes** (always include inline styles for mobile):
 ```html
-<div class="info-box">
+<div class="info-box" style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #86efac; border-radius: 10px; padding: 14px 18px; margin: 24px 0; font-size: 13px; color: #166534;">
     <strong>&#128161; Note:</strong> Green info callout text.
 </div>
 
-<div class="warning-box">
+<div class="warning-box" style="background: linear-gradient(135deg, #fefce8, #fef9c3); border: 1px solid #fde68a; border-radius: 10px; padding: 14px 18px; margin: 24px 0; font-size: 13px; color: #713f12;">
     <strong>&#9888;&#65039; Warning:</strong> Yellow warning callout text.
 </div>
 ```
 
 **Quote block:**
 ```html
-<div class="quote-block">
-    <p>&ldquo;Quoted text here.&rdquo;</p>
+<div class="quote-block" style="border-left: 3px solid #00c96b; padding: 12px 18px; margin: 24px 0; background: linear-gradient(90deg, #f0fdf4, #f8fafc); border-radius: 0 8px 8px 0;">
+    <p style="font-size: 14px; color: #475569; font-style: italic; margin: 0; line-height: 1.7;">&ldquo;Quoted text here.&rdquo;</p>
 </div>
 ```
 

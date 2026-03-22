@@ -6,7 +6,6 @@ import PreferenceCard from './PreferenceCard';
 import PreferenceForm from './PreferenceForm';
 import FeatureRequestModal from './FeatureRequestModal';
 import BlacklistCalendar from './BlacklistCalendar';
-import EasterEgg from './EasterEgg';
 import { useTheme } from '../useTheme';
 
 interface DashboardProps {
@@ -309,7 +308,6 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
           />
         )}
       </main>
-      <EasterEgg />
     </div>
   );
 }
