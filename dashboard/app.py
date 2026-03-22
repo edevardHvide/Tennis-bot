@@ -181,6 +181,99 @@ with c2:
 
 st.markdown("")
 
+# ── Facility Map ────────────────────────────────────────────────────────────
+
+FACILITY_COORDS = {
+    "ota":                {"lat": 59.9242, "lon": 10.7850, "name": "OTA"},
+    "bergentennisarena":  {"lat": 60.3880, "lon": 5.3250,  "name": "Bergen Tennis Arena"},
+    "furuset":            {"lat": 59.9520, "lon": 10.8650, "name": "Furuset"},
+    "interpadel":         {"lat": 59.9330, "lon": 10.8350, "name": "InterPadel Oslo"},
+    "nordicpadel":        {"lat": 59.9300, "lon": 10.9600, "name": "Nordic Padel"},
+    "nordstrand":         {"lat": 59.8640, "lon": 10.7900, "name": "Nordstrand Tennisklubb"},
+    "voldslokka":         {"lat": 59.9350, "lon": 10.7520, "name": "Voldsløkka"},
+    "bergenpadelklubb":   {"lat": 60.3700, "lon": 5.3450,  "name": "Bergen Padelklubb"},
+    "interpadelbergen":   {"lat": 60.3100, "lon": 5.3100,  "name": "InterPadel Bergen (Sandsli)"},
+    "frogner":            {"lat": 59.9240, "lon": 10.7050, "name": "Frogner"},
+    "ullern":             {"lat": 59.9300, "lon": 10.6400, "name": "Ullern Tennisklubb"},
+    "heming":             {"lat": 59.9540, "lon": 10.6580, "name": "Heming Tennis og Padel"},
+    "holmenkollen":       {"lat": 59.9650, "lon": 10.6600, "name": "Holmenkollen Tennisklubb"},
+}
+
+st.markdown("##### Court Locations")
+
+# Build map data: join facility coords with watcher counts per sport
+facility_sport_counts = (
+    prefs_df.groupby(["facilityid", "sport"])
+    .size()
+    .reset_index(name="watchers")
+)
+
+map_rows = []
+seen_facilities = set()
+for _, row in facility_sport_counts.iterrows():
+    fid = row["facilityid"]
+    if fid in FACILITY_COORDS:
+        seen_facilities.add(fid)
+        coords = FACILITY_COORDS[fid]
+        map_rows.append({
+            "facility": coords["name"],
+            "lat": coords["lat"],
+            "lon": coords["lon"],
+            "sport": row["sport"],
+            "watchers": int(row["watchers"]),
+        })
+
+# Include facilities with 0 watchers
+for fid, coords in FACILITY_COORDS.items():
+    if fid not in seen_facilities:
+        map_rows.append({
+            "facility": coords["name"],
+            "lat": coords["lat"],
+            "lon": coords["lon"],
+            "sport": "none",
+            "watchers": 0,
+        })
+
+map_df = pd.DataFrame(map_rows)
+
+MAP_COLORS = {"tennis": "#34d399", "padel": "#fb923c", "none": "#52536a"}
+
+fig_map = px.scatter_mapbox(
+    map_df,
+    lat="lat",
+    lon="lon",
+    size=[max(w, 3) for w in map_df["watchers"]],
+    size_max=30,
+    color="sport",
+    color_discrete_map=MAP_COLORS,
+    hover_name="facility",
+    hover_data={"watchers": True, "sport": True, "lat": False, "lon": False},
+    zoom=5,
+    center={"lat": 59.95, "lon": 10.0},
+)
+fig_map.update_layout(
+    mapbox_style="carto-darkmatter",
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    margin=dict(t=0, b=0, l=0, r=0),
+    height=480,
+    legend=dict(
+        title=None,
+        font=dict(color="#e8e8ed", size=12),
+        bgcolor="rgba(15,17,23,0.8)",
+        bordercolor="rgba(255,255,255,0.06)",
+        borderwidth=1,
+        orientation="h",
+        yanchor="top",
+        y=0.99,
+        xanchor="left",
+        x=0.01,
+    ),
+)
+st.plotly_chart(fig_map, use_container_width=True)
+
+st.markdown("")
+
 # User table
 st.markdown("##### Most Active Users")
 st.dataframe(
