@@ -159,3 +159,10 @@ The script will prompt for a second confirmation (`Type 'send' to confirm`).
 - The body file should contain ONLY the inner content HTML — not `<html>`, `<head>`, or the full template
 - Rate limited to 1.1s between sends to respect SMTP limits
 - SMTP config is loaded from `.env` file in the repo root
+
+## Gotchas
+
+- **Use `python3` not `python` on macOS.** There is no `python` binary on this machine.
+- **No venv needed for send-email.** The script runs fine with system `python3`. Don't waste time looking for `.venv/bin/activate`.
+- **Pipe `echo "send"` for non-interactive use.** The script prompts `Type 'send' to confirm:` — pipe it to avoid hanging: `echo "send" | python3 scripts/send_email.py ...`
+- **The venv activation path in Step 4/5 examples is Windows-style** (`Scripts/activate`). On macOS use `python3` directly instead.
