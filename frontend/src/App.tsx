@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import LoginForm from './components/LoginForm';
 import Dashboard from './components/Dashboard';
+import PwaInstallHint from './components/PwaInstallHint';
 
 function App() {
   const [userId, setUserId] = useState<string | null>(() => {
@@ -18,10 +19,20 @@ function App() {
   };
 
   if (!userId) {
-    return <LoginForm onLogin={handleLogin} />;
+    return (
+      <>
+        <LoginForm onLogin={handleLogin} />
+        <PwaInstallHint />
+      </>
+    );
   }
 
-  return <Dashboard userId={userId} onLogout={handleLogout} />;
+  return (
+    <>
+      <Dashboard userId={userId} onLogout={handleLogout} />
+      <PwaInstallHint />
+    </>
+  );
 }
 
 export default App;

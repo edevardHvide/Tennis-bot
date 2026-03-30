@@ -4,8 +4,23 @@ description: Check GitHub for new issues, plan fix, get Telegram approval from o
 user_invocable: true
 ---
 
-1. Check GitHub for new issues created in the last hour using `gh issue list`.
-2. For each new issue:
+1. **Scraper health check** — Verify the scraper has run successfully recently:
+   a. Query the `tennis-availability` DynamoDB table (region `eu-north-1`) for a recent item to check its `updatedAt` timestamp:
+      ```
+      aws dynamodb scan --table-name tennis-availability --region eu-north-1 --max-items 1 --projection-expression "updatedAt" --profile tennis-bot
+      ```
+   b. If the most recent `updatedAt` is older than 2 hours, the scraper is unhealthy. Create a GitHub issue:
+      ```
+      gh issue create --title "Bug: Scraper has not run successfully" --body "The scraper's last successful run was at <updatedAt timestamp>. It should run every hour. Please investigate CloudWatch logs for the scraper Lambda." --label bug
+      ```
+   c. Before creating the issue, check that there isn't already an open issue with the same title to avoid duplicates:
+      ```
+      gh issue list --search "Bug: Scraper has not run successfully" --state open
+      ```
+   d. If the scraper is healthy, log it and move on.
+
+2. Check GitHub for new issues created in the last hour using `gh issue list`.
+3. For each new issue:
    a. Analyze the issue and create an implementation plan.
    b. Send the plan to the owner via Telegram (chat_id: `8777542698`) using the `mcp__plugin_telegram_telegram__reply` tool and ask for an OK before proceeding.
    c. Wait for the owner's approval in Telegram. The owner will reply in Telegram — look for their response in the conversation.
