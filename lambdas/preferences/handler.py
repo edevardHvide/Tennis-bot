@@ -375,7 +375,10 @@ def get_blacklist(event: dict, user_id: str) -> dict:
 
     result = _users_table().get_item(Key={"userId": user_id})
     dates = list(result.get("Item", {}).get("blacklistedDates", []))
-    return _ok({"blacklistedDates": sorted(dates)})
+    # Strip expired dates so the frontend doesn't accumulate stale entries
+    today = datetime.now(OSLO_TZ).date()
+    current = [d for d in dates if isinstance(d, str) and _DATE_RE.match(d) and datetime.strptime(d, "%Y-%m-%d").date() >= today]
+    return _ok({"blacklistedDates": sorted(current)})
 
 
 def update_blacklist(event: dict, user_id: str) -> dict:
@@ -394,11 +397,25 @@ def update_blacklist(event: dict, user_id: str) -> dict:
     if not isinstance(dates, list):
         return _error("blacklistedDates must be an array")
 
-    errors = _validate_blacklist_dates(dates)
+    # Silently drop past dates — the frontend may resend previously-stored
+    # dates that have since expired, and rejecting the whole request would
+    # block users from updating their blacklist at all.
+    today = datetime.now(OSLO_TZ).date()
+    current_dates = []
+    for d in dates:
+        if isinstance(d, str) and _DATE_RE.match(d):
+            try:
+                parsed = datetime.strptime(d, "%Y-%m-%d").date()
+                if parsed >= today:
+                    current_dates.append(d)
+            except ValueError:
+                pass
+
+    errors = _validate_blacklist_dates(current_dates)
     if errors:
         return _error("; ".join(errors))
 
-    unique_dates = sorted(set(dates))
+    unique_dates = sorted(set(current_dates))
     _users_table().update_item(
         Key={"userId": user_id},
         UpdateExpression="SET blacklistedDates = :d",
