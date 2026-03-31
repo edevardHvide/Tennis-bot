@@ -86,6 +86,10 @@ This API Gateway (HTTP API) does **NOT** decode `%40` back to `@` in path parame
 `/users/${userId}/preferences`
 ```
 
+## IMPORTANT: Blacklist validation must tolerate expired dates
+
+The `update_blacklist` endpoint receives ALL blacklisted dates from the frontend (including previously-stored ones that may now be in the past). The validation must silently drop past dates rather than rejecting the whole request — otherwise users with any expired blacklisted date get locked out of updating. Similarly, `get_blacklist` should strip expired dates on read.
+
 ## IMPORTANT: Use `uv pip` for installing packages
 
 **NEVER use `pip install` directly** — it will silently fail or not be found on this Windows setup. **ALWAYS use `uv pip install`** instead. This applies everywhere: installing deps, packaging Lambdas, etc.
