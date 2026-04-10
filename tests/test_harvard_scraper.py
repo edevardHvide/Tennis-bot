@@ -13,17 +13,32 @@ from unittest.mock import MagicMock, patch
 HARVARD_SCRAPER_DIR = os.path.join(os.path.dirname(__file__), "..", "lambdas", "harvard-scraper")
 FIXTURES_DIR = pathlib.Path(__file__).parent / "fixtures"
 
-# Ensure harvard-scraper is at the FRONT of sys.path and clear any cached
-# 'handler'/'scraper' modules from other Lambda dirs (e.g. notifications/).
-if os.path.isdir(HARVARD_SCRAPER_DIR):
+# Use importlib to load harvard-scraper modules by absolute path, avoiding
+# sys.path collisions with lambdas/notifications/handler.py when running
+# both test files together (pytest collects in alphabetical order).
+import importlib.util as _ilu
+
+def _load_mod(name):
+    """Import a module from lambdas/harvard-scraper/ by file path."""
+    fp = os.path.join(os.path.abspath(HARVARD_SCRAPER_DIR), f"{name}.py")
+    if not os.path.isfile(fp):
+        return None
+    # Ensure harvard-scraper dir is on path for sibling imports (e.g. handler imports scraper)
     _abs = os.path.abspath(HARVARD_SCRAPER_DIR)
-    # Remove if already present (so insert(0) actually puts it first)
-    if _abs in sys.path:
-        sys.path.remove(_abs)
-    sys.path.insert(0, _abs)
-    # Evict any stale modules so imports resolve to harvard-scraper/
-    for _mod_name in ("handler", "scraper", "diff"):
-        sys.modules.pop(_mod_name, None)
+    if _abs not in sys.path:
+        sys.path.insert(0, _abs)
+    # Force fresh load regardless of what's cached
+    spec = _ilu.spec_from_file_location(name, fp, submodule_search_locations=[])
+    mod = _ilu.module_from_spec(spec)
+    sys.modules[name] = mod  # register BEFORE exec so sibling imports resolve
+    spec.loader.exec_module(mod)
+    return mod
+
+if os.path.isdir(HARVARD_SCRAPER_DIR):
+    # Pre-load to ensure correct modules are cached
+    _load_mod("diff")
+    _load_mod("scraper")
+    _load_mod("handler")
 
 
 class TestFetchLessonInstances(unittest.TestCase):
