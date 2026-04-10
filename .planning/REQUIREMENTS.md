@@ -71,14 +71,14 @@
 | NOTF-02 | Phase 2 | Pending |
 | NOTF-03 | Phase 2 | Pending |
 | NOTF-04 | Phase 2 | Pending |
-| PREF-01 | Phase 3 | Pending |
-| PREF-02 | Phase 3 | Pending |
-| PREF-03 | Phase 3 | Pending |
-| PREF-04 | Phase 3 | Pending |
-| OPS-01 | Phase 4 | Pending |
-| OPS-02 | Phase 4 | Pending |
-| OPS-03 | Phase 4 | Pending |
-| OPS-04 | Phase 4 | Pending |
+| PREF-01 | Phase 2 | Pending |
+| PREF-02 | Phase 2 | Pending |
+| PREF-03 | Phase 2 | Pending |
+| PREF-04 | Phase 2 | Pending |
+| OPS-01 | Phase 3 | Pending |
+| OPS-02 | Phase 3 | Pending |
+| OPS-03 | Phase 3 | Pending |
+| OPS-04 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 17 total
@@ -87,4 +87,4 @@
 
 ---
 *Requirements defined: 2026-04-10*
-*Last updated: 2026-04-10 after initial definition*
+*Last updated: 2026-04-10 — traceability updated to 3-phase roadmap (NOTF+PREF → Phase 2, OPS → Phase 3)*
