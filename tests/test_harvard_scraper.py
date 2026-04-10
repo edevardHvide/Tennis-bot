@@ -21,7 +21,6 @@ if os.path.isdir(HARVARD_SCRAPER_DIR):
 class TestFetchLessonInstances(unittest.TestCase):
     """Tests for fetch_lesson_instances() — SCRP-01."""
 
-    @pytest.mark.skip(reason="implementation pending — Plan 03")
     def test_fetches_correct_url_and_params(self):
         """Assert requests.Session.get called with the correct URL and params."""
         from scraper import fetch_lesson_instances
@@ -45,7 +44,6 @@ class TestFetchLessonInstances(unittest.TestCase):
             self.assertIn("membership.gocrimson.com", url)
             self.assertEqual(params.get("programID"), "test-id")
 
-    @pytest.mark.skip(reason="implementation pending — Plan 03")
     def test_raises_on_http_error(self):
         """Mock 500 response — assert raises requests.HTTPError from raise_for_status()."""
         import requests
@@ -61,7 +59,6 @@ class TestFetchLessonInstances(unittest.TestCase):
             with self.assertRaises(requests.HTTPError):
                 fetch_lesson_instances("test-id")
 
-    @pytest.mark.skip(reason="implementation pending — Plan 03")
     def test_returns_list_of_dicts(self):
         """Mock 200 with available fixture — assert result is a list."""
         from scraper import fetch_lesson_instances
@@ -83,7 +80,6 @@ class TestFetchLessonInstances(unittest.TestCase):
 class TestParseHarvardAvailability(unittest.TestCase):
     """Tests for parse_harvard_availability() — SCRP-02."""
 
-    @pytest.mark.skip(reason="implementation pending — Plan 03")
     def test_available_lesson_extracted(self):
         """Available fixture returns a list with the correct date, time_slot, location."""
         from scraper import parse_harvard_availability
@@ -101,7 +97,6 @@ class TestParseHarvardAvailability(unittest.TestCase):
         self.assertEqual(lesson["time_slot"], "09:00-10:00")
         self.assertEqual(lesson["location"], "Indoor Tennis Court 6")
 
-    @pytest.mark.skip(reason="implementation pending — Plan 03")
     def test_html_text_overrides_json_math(self):
         """Unavailable fixture: .spots-tag 'No spots available' — result must be empty list."""
         from scraper import parse_harvard_availability
@@ -111,7 +106,6 @@ class TestParseHarvardAvailability(unittest.TestCase):
 
         self.assertEqual(result, [])
 
-    @pytest.mark.skip(reason="implementation pending — Plan 03")
     def test_missing_apptinfo_raises(self):
         """HTML without #ApptInfo input raises ValueError."""
         from scraper import parse_harvard_availability
@@ -119,7 +113,6 @@ class TestParseHarvardAvailability(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_harvard_availability("<html><body></body></html>")
 
-    @pytest.mark.skip(reason="implementation pending — Plan 03")
     def test_past_lessons_excluded(self):
         """Past-dated fixture: StartDate in the past — result must be empty list."""
         from scraper import parse_harvard_availability
