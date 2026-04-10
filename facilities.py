@@ -67,6 +67,11 @@ facilities = {
         "display_name": "InterPadel Bergen (Sandsli)",
         "sports": ["padel"],
     },
+    "harvard": {
+        "matchi_id": None,  # Harvard uses Innosoft Fusion, not matchi.se — no matchi_id
+        "display_name": "Harvard Recreation",
+        "sports": ["tennis"],
+    },
 }
 
 # Inactive facilities — temporarily disabled to reduce scrape time
