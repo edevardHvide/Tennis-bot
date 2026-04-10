@@ -17,6 +17,13 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
+
+def _log(level: str, message: str, **extra) -> None:
+    """Emit a structured JSON log line."""
+    record = {"level": level, "message": message, **extra}
+    getattr(logger, level.lower(), logger.info)(json.dumps(record))
+
+
 PROGRAM_URL = "https://membership.gocrimson.com/Program/GetProgramInstances"
 
 MAX_RETRIES = 3
@@ -59,13 +66,12 @@ def fetch_lesson_instances(program_id: str) -> list:
             last_exc = exc
             if attempt < MAX_RETRIES - 1:
                 sleep_time = BACKOFF_BASE * (2 ** attempt)  # 1s, 2s
-                logger.warning(
-                    "Fetch attempt %d/%d failed: %s. Retrying in %ds...",
-                    attempt + 1, MAX_RETRIES, exc, sleep_time,
-                )
+                _log("warning", "Fetch attempt failed",
+                     attempt=attempt + 1, total=MAX_RETRIES,
+                     error=str(exc), retry_in_seconds=sleep_time)
                 time.sleep(sleep_time)
             else:
-                logger.error("All %d fetch attempts failed: %s", MAX_RETRIES, exc)
+                _log("error", "All fetch attempts failed", total=MAX_RETRIES, error=str(exc))
     raise last_exc
 
 

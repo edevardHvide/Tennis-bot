@@ -3,6 +3,7 @@ REGION    ?= eu-north-1
 ACCOUNT   ?= 605893375372
 
 SCRAPER_FN    = tennis-scraper
+HARVARD_SCRAPER_FN = harvard-scraper
 PREFERENCES_FN = tennis-preferences
 NOTIFICATIONS_FN = tennis-notifications
 NEWSLETTER_FN  = tennis-newsletter
@@ -12,8 +13,9 @@ FESTIVAL_PREFS_FN = festival-preferences
 S3_FRONTEND_BUCKET = tennis-bot-frontend
 
 .PHONY: help install deploy-all deploy-scraper deploy-preferences deploy-notifications \
-        deploy-newsletter deploy-feedback deploy-frontend package-scraper package-preferences \
-        package-notifications package-newsletter package-feedback deploy-dynamo \
+        deploy-newsletter deploy-feedback deploy-harvard-scraper deploy-frontend \
+        package-scraper package-preferences package-notifications package-newsletter \
+        package-feedback package-harvard-scraper deploy-dynamo \
         deploy-festival-dynamo package-festival-preferences deploy-festival-preferences \
         validate destroy
 
@@ -102,6 +104,14 @@ package-feedback:
 	@cd lambdas/feedback/package && zip -qr ../../../build/feedback.zip .
 	@echo "   build/feedback.zip ready"
 
+package-harvard-scraper:
+	@echo ">> Packaging harvard-scraper Lambda..."
+	@mkdir -p build lambdas/harvard-scraper/package
+	@cd lambdas/harvard-scraper && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
+	@cd lambdas/harvard-scraper && cp *.py ./package/
+	@cd lambdas/harvard-scraper/package && zip -qr ../../../build/harvard-scraper.zip .
+	@echo "   build/harvard-scraper.zip ready"
+
 # ── Lambda deploy ─────────────────────────────────────────────────────────────
 
 deploy-scraper: package-scraper
@@ -141,6 +151,14 @@ deploy-feedback: package-feedback
 	@aws lambda update-function-code \
 		--function-name $(FEEDBACK_FN) \
 		--zip-file fileb://build/feedback.zip \
+		--profile $(PROFILE) --region $(REGION) \
+		--query 'LastUpdateStatus' --output text
+
+deploy-harvard-scraper: package-harvard-scraper
+	@echo ">> Deploying harvard-scraper Lambda..."
+	@aws lambda update-function-code \
+		--function-name $(HARVARD_SCRAPER_FN) \
+		--zip-file fileb://build/harvard-scraper.zip \
 		--profile $(PROFILE) --region $(REGION) \
 		--query 'LastUpdateStatus' --output text
 
