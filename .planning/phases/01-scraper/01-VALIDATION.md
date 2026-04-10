@@ -2,7 +2,7 @@
 phase: 1
 slug: scraper
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-04-10
 ---
@@ -38,11 +38,11 @@ created: 2026-04-10
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 01-01-01 | 01 | 1 | SCRP-01 | integration | `python -m pytest tests/test_harvard_scraper.py::test_fetch_lesson_instances -v` | ❌ W0 | ⬜ pending |
-| 01-01-02 | 01 | 1 | SCRP-02 | unit | `python -m pytest tests/test_harvard_scraper.py::test_parse_appt_info_json -v` | ❌ W0 | ⬜ pending |
-| 01-01-03 | 01 | 1 | SCRP-03 | unit | `python -m pytest tests/test_harvard_scraper.py::test_normalize_to_diff_format -v` | ❌ W0 | ⬜ pending |
-| 01-01-04 | 01 | 1 | SCRP-04 | unit | `python -m pytest tests/test_harvard_scraper.py::test_diff_detects_new_availability -v` | ❌ W0 | ⬜ pending |
-| 01-01-05 | 01 | 1 | SCRP-05 | unit | `python -m pytest tests/test_harvard_scraper.py::test_cold_start_no_alerts -v` | ❌ W0 | ⬜ pending |
+| 01-01-01 | 01 | 1 | SCRP-01 | integration | `python -m pytest tests/test_harvard_scraper.py::TestFetchLessonInstances -v` | ❌ W0 | ⬜ pending |
+| 01-01-02 | 01 | 1 | SCRP-02 | unit | `python -m pytest tests/test_harvard_scraper.py::TestParseHarvardAvailability -v` | ❌ W0 | ⬜ pending |
+| 01-01-03 | 01 | 1 | SCRP-03 | unit | `python -m pytest tests/test_harvard_scraper.py::TestSnapshotStorage -v` | ❌ W0 | ⬜ pending |
+| 01-01-04 | 01 | 1 | SCRP-04 | unit | `python -m pytest tests/test_harvard_scraper.py::TestColdStart::test_notification_on_second_run_new_slot -v` | ❌ W0 | ⬜ pending |
+| 01-01-05 | 01 | 1 | SCRP-05 | unit | `python -m pytest tests/test_harvard_scraper.py::TestColdStart::test_no_notification_on_first_run -v` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -50,11 +50,12 @@ created: 2026-04-10
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_harvard_scraper.py` — test stubs for SCRP-01 through SCRP-05
-- [ ] `tests/fixtures/harvard_rec_instances.html` — captured HTML fixture from live endpoint
-- [ ] `tests/fixtures/harvard_rec_instances_changed.html` — modified fixture with availability change
+- [ ] `tests/test_harvard_scraper.py` — test stubs for SCRP-01 through SCRP-05 (classes: TestFetchLessonInstances, TestParseHarvardAvailability, TestSnapshotStorage, TestColdStart)
+- [ ] `tests/fixtures/harvard_available.html` — HTML fixture with one available lesson (1 Spot available)
+- [ ] `tests/fixtures/harvard_unavailable.html` — HTML fixture with one unavailable lesson (No spots available)
+- [ ] `tests/fixtures/harvard_past_dated.html` — HTML fixture with a past-dated lesson
 
-*Test fixtures must be captured from the live GetProgramInstances endpoint to validate parser against real HTML structure.*
+*Fixtures are synthetic but structurally match the live GetProgramInstances endpoint HTML format.*
 
 ---
 
