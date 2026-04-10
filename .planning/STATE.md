@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in-progress
-stopped_at: "Completed 01-01-PLAN.md — Harvard scraper test scaffolding (fixtures + stubs)"
-last_updated: "2026-04-10T08:52:00Z"
+status: unknown
+stopped_at: Completed 01-03-PLAN.md — Harvard scraper implementation (scraper.py + handler.py + diff.py)
+last_updated: "2026-04-10T08:53:46.363Z"
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -46,6 +46,7 @@ Plan: 2 of 3 complete (next: Plan 03)
 - Trend: on track
 
 *Updated after each plan completion*
+| Phase 01-scraper P03 | 6 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,8 @@ Recent decisions affecting current work:
 - Harvard in active facilities dict (not inactive) so VALID_FACILITY_IDS auto-includes it
 - matchi_id=None sentinel chosen over separate dict to keep facility config co-located
 - Guard uses config.get('matchi_id') is None to avoid masking hypothetical matchi_id=0
+- [Phase 01-scraper]: Cold-start guard uses two get_item calls per date to distinguish first-run (no Item) from second-run-with-empty-slots (Item present)
+- [Phase 01-scraper]: fetch_lesson_instances imported at handler module level so tests can patch handler.fetch_lesson_instances directly
 
 ### Pending Todos
 
@@ -72,6 +75,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-10
-Stopped at: Completed 01-02-PLAN.md — facilities.py harvard entry + scraper guard
+Last session: 2026-04-10T08:53:46.361Z
+Stopped at: Completed 01-03-PLAN.md — Harvard scraper implementation (scraper.py + handler.py + diff.py)
 Resume file: None
