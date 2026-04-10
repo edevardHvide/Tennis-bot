@@ -22,7 +22,7 @@ NOTIFICATIONS_FUNCTION="tennis-notifications"
 
 echo ">> Building deployment package..."
 mkdir -p build lambdas/harvard-scraper/package
-uv pip install -r lambdas/harvard-scraper/requirements.txt --target lambdas/harvard-scraper/package --quiet
+pip3 install -r lambdas/harvard-scraper/requirements.txt --target lambdas/harvard-scraper/package --quiet 2>/dev/null || pip install -r lambdas/harvard-scraper/requirements.txt --target lambdas/harvard-scraper/package --quiet
 cp lambdas/harvard-scraper/*.py lambdas/harvard-scraper/package/
 cp facilities.py lambdas/harvard-scraper/package/
 cd lambdas/harvard-scraper/package && zip -qr ../../../build/harvard-scraper.zip . && cd -
