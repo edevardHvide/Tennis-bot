@@ -13,9 +13,17 @@ from unittest.mock import MagicMock, patch
 HARVARD_SCRAPER_DIR = os.path.join(os.path.dirname(__file__), "..", "lambdas", "harvard-scraper")
 FIXTURES_DIR = pathlib.Path(__file__).parent / "fixtures"
 
-# Guard: only add to path if directory exists (it doesn't yet — created in Plan 03)
+# Ensure harvard-scraper is at the FRONT of sys.path and clear any cached
+# 'handler'/'scraper' modules from other Lambda dirs (e.g. notifications/).
 if os.path.isdir(HARVARD_SCRAPER_DIR):
-    sys.path.insert(0, os.path.abspath(HARVARD_SCRAPER_DIR))
+    _abs = os.path.abspath(HARVARD_SCRAPER_DIR)
+    # Remove if already present (so insert(0) actually puts it first)
+    if _abs in sys.path:
+        sys.path.remove(_abs)
+    sys.path.insert(0, _abs)
+    # Evict any stale modules so imports resolve to harvard-scraper/
+    for _mod_name in ("handler", "scraper", "diff"):
+        sys.modules.pop(_mod_name, None)
 
 
 class TestFetchLessonInstances(unittest.TestCase):
