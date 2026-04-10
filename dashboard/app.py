@@ -45,6 +45,14 @@ total_users = len(users_df)
 total_prefs = len(prefs_df)
 total_feedback = len(feedback_df)
 
+# New preferences today
+today_str = pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d")
+if "createdat" in prefs_df.columns:
+    prefs_today = prefs_df[prefs_df["createdat"].astype(str).str[:10] == today_str]
+    new_prefs_today = len(prefs_today)
+else:
+    new_prefs_today = 0
+
 sport_counts = prefs_df.groupby("sport").size().reset_index(name="count")
 facility_counts = (
     prefs_df.groupby("facilityid")
@@ -121,11 +129,12 @@ st.markdown(
 )
 
 # KPI row
-k1, k2, k3, k4 = st.columns(4)
+k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("Total Users", total_users)
 k2.metric("Active Preferences", total_prefs)
-k3.metric("Facilities Watched", facilities_watched)
-k4.metric("Feature Requests", total_feedback)
+k3.metric("New Today", new_prefs_today)
+k4.metric("Facilities Watched", facilities_watched)
+k5.metric("Feature Requests", total_feedback)
 
 st.markdown("")
 
