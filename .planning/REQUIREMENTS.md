@@ -7,11 +7,11 @@
 
 ### Scraping
 
-- [ ] **SCRP-01**: Lambda fetches Harvard Rec lesson data via GET /Program/GetProgramInstances endpoint
-- [ ] **SCRP-02**: Parser extracts structured slot data from #ApptInfo hidden input JSON
+- [x] **SCRP-01**: Lambda fetches Harvard Rec lesson data via GET /Program/GetProgramInstances endpoint
+- [x] **SCRP-02**: Parser extracts structured slot data from #ApptInfo hidden input JSON
 - [x] **SCRP-03**: Slots are stored as DynamoDB snapshots with `harvard#tennis` composite key and date sort key
-- [ ] **SCRP-04**: Diff engine detects newly available slots (unavailable → available transitions)
-- [ ] **SCRP-05**: First run seeds DynamoDB without triggering spurious "everything is new" alerts
+- [x] **SCRP-04**: Diff engine detects newly available slots (unavailable → available transitions)
+- [x] **SCRP-05**: First run seeds DynamoDB without triggering spurious "everything is new" alerts
 
 ### Notifications
 
@@ -62,11 +62,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCRP-01 | Phase 1 | Pending |
-| SCRP-02 | Phase 1 | Pending |
+| SCRP-01 | Phase 1 | Complete |
+| SCRP-02 | Phase 1 | Complete |
 | SCRP-03 | Phase 1 | Complete |
-| SCRP-04 | Phase 1 | Pending |
-| SCRP-05 | Phase 1 | Pending |
+| SCRP-04 | Phase 1 | Complete |
+| SCRP-05 | Phase 1 | Complete |
 | NOTF-01 | Phase 2 | Pending |
 | NOTF-02 | Phase 2 | Pending |
 | NOTF-03 | Phase 2 | Pending |

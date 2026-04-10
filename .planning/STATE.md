@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-stopped_at: "Completed 01-02-PLAN.md — facilities.py harvard entry + scraper guard"
-last_updated: "2026-04-10T08:49:00Z"
+stopped_at: "Completed 01-01-PLAN.md — Harvard scraper test scaffolding (fixtures + stubs)"
+last_updated: "2026-04-10T08:52:00Z"
 progress:
   total_phases: 3
   completed_phases: 0
