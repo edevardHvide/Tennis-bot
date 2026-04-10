@@ -8,7 +8,10 @@ A court in the diff matches a preference when:
   4. If courtType is set, the court name matches the filter.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 from facilities import get_matchi_id, get_display_name, SPORT_CODES
