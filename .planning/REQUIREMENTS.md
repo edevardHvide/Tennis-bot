@@ -9,7 +9,7 @@
 
 - [ ] **SCRP-01**: Lambda fetches Harvard Rec lesson data via GET /Program/GetProgramInstances endpoint
 - [ ] **SCRP-02**: Parser extracts structured slot data from #ApptInfo hidden input JSON
-- [ ] **SCRP-03**: Slots are stored as DynamoDB snapshots with `harvard#tennis` composite key and date sort key
+- [x] **SCRP-03**: Slots are stored as DynamoDB snapshots with `harvard#tennis` composite key and date sort key
 - [ ] **SCRP-04**: Diff engine detects newly available slots (unavailable → available transitions)
 - [ ] **SCRP-05**: First run seeds DynamoDB without triggering spurious "everything is new" alerts
 
@@ -64,7 +64,7 @@
 |-------------|-------|--------|
 | SCRP-01 | Phase 1 | Pending |
 | SCRP-02 | Phase 1 | Pending |
-| SCRP-03 | Phase 1 | Pending |
+| SCRP-03 | Phase 1 | Complete |
 | SCRP-04 | Phase 1 | Pending |
 | SCRP-05 | Phase 1 | Pending |
 | NOTF-01 | Phase 2 | Pending |
