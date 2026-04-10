@@ -110,6 +110,27 @@ export interface AvailabilityResponse {
   generatedAt: string;
 }
 
+// ── Festival ticket monitoring (beta) ────────────────────────────────────────
+
+export interface Festival {
+  festivalId: string;
+  name: string;
+  dates: string;
+  location: string;
+  platform: string;
+  ticketAvailable: boolean | null;
+  ticketStatusText: string;
+  lastCheckedAt: string | null;
+  url: string;
+}
+
+export interface FestivalSubscription {
+  festivalId: string;
+  enabled: boolean;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 export function getFacilityDisplayName(facilityId: string): string {
   const facility = FACILITIES.find((f) => f.id === facilityId);
   return facility?.displayName ?? facilityId;

@@ -7,12 +7,15 @@ PREFERENCES_FN = tennis-preferences
 NOTIFICATIONS_FN = tennis-notifications
 NEWSLETTER_FN  = tennis-newsletter
 FEEDBACK_FN    = tennis-feedback
+FESTIVAL_PREFS_FN = festival-preferences
 
 S3_FRONTEND_BUCKET = tennis-bot-frontend
 
 .PHONY: help install deploy-all deploy-scraper deploy-preferences deploy-notifications \
         deploy-newsletter deploy-feedback deploy-frontend package-scraper package-preferences \
-        package-notifications package-newsletter package-feedback deploy-dynamo validate destroy
+        package-notifications package-newsletter package-feedback deploy-dynamo \
+        deploy-festival-dynamo package-festival-preferences deploy-festival-preferences \
+        validate destroy
 
 # ── Help ─────────────────────────────────────────────────────────────────────
 
@@ -138,6 +141,29 @@ deploy-feedback: package-feedback
 	@aws lambda update-function-code \
 		--function-name $(FEEDBACK_FN) \
 		--zip-file fileb://build/feedback.zip \
+		--profile $(PROFILE) --region $(REGION) \
+		--query 'LastUpdateStatus' --output text
+
+# ── Festival (beta) ──────────────────────────────────────────────────────────
+
+deploy-festival-dynamo:
+	@echo ">> Provisioning festival DynamoDB tables..."
+	@bash infra/dynamo/deploy-festival.sh --profile $(PROFILE)
+
+package-festival-preferences:
+	@echo ">> Packaging festival-preferences Lambda..."
+	@mkdir -p build
+	@cd lambdas/festival-preferences && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
+	@cd lambdas/festival-preferences && cp -r . ./package/ 2>/dev/null || true
+	@cp festivals.py lambdas/festival-preferences/package/
+	@cd lambdas/festival-preferences/package && zip -qr ../../../build/festival-preferences.zip .
+	@echo "   build/festival-preferences.zip ready"
+
+deploy-festival-preferences: package-festival-preferences
+	@echo ">> Deploying festival-preferences Lambda..."
+	@aws lambda update-function-code \
+		--function-name $(FESTIVAL_PREFS_FN) \
+		--zip-file fileb://build/festival-preferences.zip \
 		--profile $(PROFILE) --region $(REGION) \
 		--query 'LastUpdateStatus' --output text
 

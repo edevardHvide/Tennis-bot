@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Preference, PreferenceFormData, HighscoreEntry, AvailabilityResponse } from './types';
+import type { Preference, PreferenceFormData, HighscoreEntry, AvailabilityResponse, Festival, FestivalSubscription } from './types';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'https://api.availabilitymonitor.club',
@@ -101,4 +101,24 @@ export async function submitHighscore(userId: string, playerName: string, score:
 export async function getHighscores(): Promise<HighscoreEntry[]> {
   const response = await api.get('/highscores');
   return response.data.data ?? response.data ?? [];
+}
+
+// ── Festival ticket monitoring (beta) ────────────────────────────────────────
+
+export async function getFestivals(): Promise<Festival[]> {
+  const response = await api.get('/festivals');
+  return response.data.data ?? response.data ?? [];
+}
+
+export async function getFestivalSubscriptions(userId: string): Promise<FestivalSubscription[]> {
+  const response = await api.get(`/users/${userId}/festivals`);
+  return response.data.data ?? response.data ?? [];
+}
+
+export async function toggleFestivalSubscription(
+  userId: string,
+  festivalId: string,
+  enabled: boolean
+): Promise<void> {
+  await api.put(`/users/${userId}/festivals/${festivalId}`, { enabled });
 }
