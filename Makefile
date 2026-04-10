@@ -109,6 +109,7 @@ package-harvard-scraper:
 	@mkdir -p build lambdas/harvard-scraper/package
 	@cd lambdas/harvard-scraper && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
 	@cd lambdas/harvard-scraper && cp *.py ./package/
+	@cp facilities.py lambdas/harvard-scraper/package/
 	@cd lambdas/harvard-scraper/package && zip -qr ../../../build/harvard-scraper.zip .
 	@echo "   build/harvard-scraper.zip ready"
 
