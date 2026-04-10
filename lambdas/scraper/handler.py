@@ -173,6 +173,8 @@ def lambda_handler(event: dict, context) -> dict:
     # Build list of (facility_key, sport) pairs to scrape
     facility_sport_pairs = []
     for facility_key, config in facilities.items():
+        if config.get("matchi_id") is None:
+            continue  # Skip non-matchi facilities (e.g. harvard uses Innosoft Fusion)
         for sport in get_sports(facility_key):
             facility_sport_pairs.append((facility_key, config["matchi_id"], sport))
 
