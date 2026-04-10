@@ -15,17 +15,17 @@
 
 ### Notifications
 
-- [ ] **NOTF-01**: Harvard scraper invokes existing notifications Lambda with standard diff payload format
-- [ ] **NOTF-02**: Email includes lesson-specific content: location, date, time, spot count
-- [ ] **NOTF-03**: Email includes direct link to Harvard Rec program registration page
-- [ ] **NOTF-04**: Dedup prevents re-alerting for the same lesson slot within a configurable TTL
+- [x] **NOTF-01**: Harvard scraper invokes existing notifications Lambda with standard diff payload format
+- [x] **NOTF-02**: Email includes lesson-specific content: location, date, time, spot count
+- [x] **NOTF-03**: Email includes direct link to Harvard Rec program registration page
+- [x] **NOTF-04**: Dedup prevents re-alerting for the same lesson slot within a configurable TTL
 
 ### Preferences
 
-- [ ] **PREF-01**: `harvard` added as a facility in facilities.py with display name "Harvard Recreation"
+- [x] **PREF-01**: `harvard` added as a facility in facilities.py with display name "Harvard Recreation"
 - [ ] **PREF-02**: Frontend FACILITIES list includes Harvard Recreation as a selectable option
-- [ ] **PREF-03**: Users can create preferences for Harvard facility + tennis sport with day/time filters
-- [ ] **PREF-04**: Existing matcher.py correctly matches `harvard#tennis` composite key against user preferences
+- [x] **PREF-03**: Users can create preferences for Harvard facility + tennis sport with day/time filters
+- [x] **PREF-04**: Existing matcher.py correctly matches `harvard#tennis` composite key against user preferences
 
 ### Operations
 
@@ -67,14 +67,14 @@
 | SCRP-03 | Phase 1 | Complete |
 | SCRP-04 | Phase 1 | Complete |
 | SCRP-05 | Phase 1 | Complete |
-| NOTF-01 | Phase 2 | Pending |
-| NOTF-02 | Phase 2 | Pending |
-| NOTF-03 | Phase 2 | Pending |
-| NOTF-04 | Phase 2 | Pending |
-| PREF-01 | Phase 2 | Pending |
+| NOTF-01 | Phase 2 | Complete |
+| NOTF-02 | Phase 2 | Complete |
+| NOTF-03 | Phase 2 | Complete |
+| NOTF-04 | Phase 2 | Complete |
+| PREF-01 | Phase 2 | Complete |
 | PREF-02 | Phase 2 | Pending |
-| PREF-03 | Phase 2 | Pending |
-| PREF-04 | Phase 2 | Pending |
+| PREF-03 | Phase 2 | Complete |
+| PREF-04 | Phase 2 | Complete |
 | OPS-01 | Phase 3 | Pending |
 | OPS-02 | Phase 3 | Pending |
 | OPS-03 | Phase 3 | Pending |
