@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 02-02-PLAN.md — Harvard GREEN phase
-last_updated: "2026-04-10T09:25:12.051Z"
+stopped_at: Completed 03-01-PLAN.md — harvard-scraper deploy infrastructure
+last_updated: "2026-04-10T09:28:51.915Z"
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-10)
 
 **Core value:** Notify users the moment a Harvard Recreation tennis lesson spot opens up
-**Current focus:** Phase 02 — integration
+**Current focus:** Phase 03 — deploy
 
 ## Current Position
 
-Phase: 02 (integration) — EXECUTING
-Plan: 1 of 3
+Phase: 03 (deploy) — EXECUTING
+Plan: 1 of 2
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Plan: 1 of 3
 | Phase 01-scraper P03 | 6 | 2 tasks | 5 files |
 | Phase 02-integration P01 | 3 | 2 tasks | 4 files |
 | Phase 02-integration P02 | 5 | 2 tasks | 2 files |
+| Phase 03-deploy P01 | 97 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,8 @@ Recent decisions affecting current work:
 - [Phase 02-integration]: Separate test file (test_harvard_integration.py) for Python 3.9 compat — test_notifications.py uses 3.10+ union syntax
 - [Phase 02-integration]: Added from __future__ import annotations to matcher.py and preferences/handler.py for Python 3.9 compatibility
 - [Phase 02-integration]: Per-facility CTA in email_builder.py uses matchi_id is None sentinel — Harvard gets gocrimson.com CTA, Matchi facilities get matchi.se CTA
+- [Phase 03-deploy]: Deploy script created instead of running aws lambda create-function directly — AWS credentials not configured in this session
+- [Phase 03-deploy]: Local _log helper defined in scraper.py (not imported from handler) to avoid circular imports
 
 ### Pending Todos
 
@@ -80,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-10T09:19:30.235Z
-Stopped at: Completed 02-02-PLAN.md — Harvard GREEN phase
+Last session: 2026-04-10T09:28:51.913Z
+Stopped at: Completed 03-01-PLAN.md — harvard-scraper deploy infrastructure
 Resume file: None

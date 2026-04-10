@@ -76,4 +76,4 @@ Phases execute in numeric order: 1 → 2 → 3
 |-------|----------------|--------|-----------|
 | 1. Scraper | 2/3 | In Progress|  |
 | 2. Integration | 2/3 | In Progress|  |
-| 3. Deploy | 0/2 | Not started | - |
+| 3. Deploy | 1/2 | In Progress|  |

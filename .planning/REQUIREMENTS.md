@@ -29,10 +29,10 @@
 
 ### Operations
 
-- [ ] **OPS-01**: Separate Lambda function deployed independently from matchi scraper
+- [x] **OPS-01**: Separate Lambda function deployed independently from matchi scraper
 - [ ] **OPS-02**: EventBridge cron triggers scraper every 15 minutes
-- [ ] **OPS-03**: Structured JSON logging matching existing scraper log format
-- [ ] **OPS-04**: programID externalized as environment variable for semester rollover
+- [x] **OPS-03**: Structured JSON logging matching existing scraper log format
+- [x] **OPS-04**: programID externalized as environment variable for semester rollover
 
 ## v2 Requirements
 
@@ -75,10 +75,10 @@
 | PREF-02 | Phase 2 | Complete |
 | PREF-03 | Phase 2 | Complete |
 | PREF-04 | Phase 2 | Complete |
-| OPS-01 | Phase 3 | Pending |
+| OPS-01 | Phase 3 | Complete |
 | OPS-02 | Phase 3 | Pending |
-| OPS-03 | Phase 3 | Pending |
-| OPS-04 | Phase 3 | Pending |
+| OPS-03 | Phase 3 | Complete |
+| OPS-04 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 17 total
