@@ -28,7 +28,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A second run after nothing changes produces zero diffs
   4. When a slot transitions from unavailable to available, the diff engine surfaces it
   5. The very first run seeds DynamoDB silently without producing any alerts
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Test scaffolding: HTML fixtures + test stubs (Wave 1)
+- [ ] 01-02-PLAN.md — facilities.py harvard entry + matchi scraper guard (Wave 1)
+- [ ] 01-03-PLAN.md — lambdas/harvard-scraper/ implementation + tests passing (Wave 2)
 
 ### Phase 2: Integration
 **Goal**: Detected lesson diffs flow into the existing notification pipeline and users can subscribe via preferences and frontend
@@ -60,6 +65,6 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Scraper | 0/? | Not started | - |
+| 1. Scraper | 0/3 | Not started | - |
 | 2. Integration | 0/? | Not started | - |
 | 3. Deploy | 0/? | Not started | - |
