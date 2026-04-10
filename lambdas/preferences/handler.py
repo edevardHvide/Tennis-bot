@@ -15,11 +15,14 @@ DynamoDB tables (eu-north-1):
   tennis-availability PK: facilityId (composite), SK: date
 """
 
+from __future__ import annotations
+
 import json
 import os
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 OSLO_TZ = ZoneInfo("Europe/Oslo")

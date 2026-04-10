@@ -974,3 +974,106 @@ class TestRouter:
             None,
         )
         assert response["statusCode"] == 404
+
+
+# ---------------------------------------------------------------------------
+# Harvard preferences tests — PREF-01, PREF-03
+# ---------------------------------------------------------------------------
+
+
+class TestCreatePreferenceHarvard:
+    """Tests verifying PREF-01 (harvard in VALID_FACILITY_IDS) and
+    PREF-03 (preferences API accepts harvard+tennis)."""
+
+    def test_harvard_in_valid_facility_ids(self):
+        """PREF-01: VALID_FACILITY_IDS must include 'harvard'."""
+        import importlib
+        import handler as h
+
+        assert "harvard" in h.VALID_FACILITY_IDS
+
+    def test_create_preference_harvard_tennis_accepted(self, dynamo):
+        """PREF-03: POST preference with facilityId=harvard sport=tennis returns 201."""
+        import handler as h
+
+        # Register user
+        h.lambda_handler(
+            _event("POST", "/users", {"userId": "test@harvard.edu", "name": "Test User"}),
+            None,
+        )
+
+        # Create harvard+tennis preference
+        resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "harvard",
+                    "sport": "tennis",
+                    "dates": ["monday", "wednesday"],
+                    "timeFrom": "09:00",
+                    "timeTo": "11:00",
+                },
+                path_params={"userId": "test@harvard.edu"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 201
+        data = _body(resp)["data"]
+        assert data["facilityId"] == "harvard"
+        assert data["sport"] == "tennis"
+
+    def test_create_preference_harvard_padel_rejected(self, dynamo):
+        """Harvard only supports tennis — padel preference must return 400."""
+        import handler as h
+
+        h.lambda_handler(
+            _event("POST", "/users", {"userId": "test2@harvard.edu", "name": "Test User 2"}),
+            None,
+        )
+
+        resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "harvard",
+                    "sport": "padel",
+                    "dates": ["monday"],
+                    "timeFrom": "09:00",
+                    "timeTo": "11:00",
+                },
+                path_params={"userId": "test2@harvard.edu"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 400
+        error = _body(resp)["error"]
+        assert "padel" in error.lower() or "harvard" in error.lower()
+
+    def test_create_preference_harvard_court_type_rejected(self, dynamo):
+        """courtType is only valid for padel — tennis + courtType must return 400."""
+        import handler as h
+
+        h.lambda_handler(
+            _event("POST", "/users", {"userId": "test3@harvard.edu", "name": "Test User 3"}),
+            None,
+        )
+
+        resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "harvard",
+                    "sport": "tennis",
+                    "courtType": "double",
+                    "dates": ["monday"],
+                    "timeFrom": "09:00",
+                    "timeTo": "11:00",
+                },
+                path_params={"userId": "test3@harvard.edu"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 400
