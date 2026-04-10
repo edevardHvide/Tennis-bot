@@ -126,7 +126,6 @@ class TestParseHarvardAvailability(unittest.TestCase):
 class TestSnapshotStorage(unittest.TestCase):
     """Tests for load_snapshot() and save_snapshot() — SCRP-03."""
 
-    @pytest.mark.skip(reason="implementation pending — Plan 03")
     def test_save_snapshot_uses_harvard_composite_key(self):
         """save_snapshot calls table.put_item with facilityId='harvard#tennis'."""
         from handler import save_snapshot
@@ -145,7 +144,6 @@ class TestSnapshotStorage(unittest.TestCase):
         self.assertEqual(item["facilityId"], "harvard#tennis")
         self.assertEqual(item["date"], "2026-05-01")
 
-    @pytest.mark.skip(reason="implementation pending — Plan 03")
     def test_load_snapshot_returns_empty_on_miss(self):
         """load_snapshot returns {} when DynamoDB get_item has no Item key."""
         from handler import load_snapshot
@@ -161,7 +159,6 @@ class TestSnapshotStorage(unittest.TestCase):
 class TestColdStart(unittest.TestCase):
     """Tests for the cold-start seeding guard — SCRP-05."""
 
-    @pytest.mark.skip(reason="implementation pending — Plan 03")
     def test_no_notification_on_first_run(self):
         """On first run (empty DynamoDB), notifications Lambda must NOT be invoked."""
         from handler import lambda_handler
@@ -189,7 +186,6 @@ class TestColdStart(unittest.TestCase):
 
             mock_lambda_client.invoke.assert_not_called()
 
-    @pytest.mark.skip(reason="implementation pending — Plan 03")
     def test_notification_on_second_run_new_slot(self):
         """Second run with a new slot: notifications Lambda MUST be invoked with harvard#tennis."""
         from handler import lambda_handler
