@@ -61,7 +61,11 @@ Plans:
   2. EventBridge triggers the Harvard scraper every 15 minutes automatically
   3. Lambda logs emit structured JSON matching the existing scraper log format (visible in CloudWatch)
   4. The programID can be changed via environment variable without a code deploy
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Makefile targets + create Lambda function + fix scraper.py structured logging (Wave 1)
+- [ ] 03-02-PLAN.md — EventBridge cron rule + Lambda permission + live smoke test (Wave 2)
 
 ## Progress
 
@@ -72,4 +76,4 @@ Phases execute in numeric order: 1 → 2 → 3
 |-------|----------------|--------|-----------|
 | 1. Scraper | 2/3 | In Progress|  |
 | 2. Integration | 2/3 | In Progress|  |
-| 3. Deploy | 0/? | Not started | - |
+| 3. Deploy | 0/2 | Not started | - |
