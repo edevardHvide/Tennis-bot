@@ -23,7 +23,7 @@
 ### Preferences
 
 - [x] **PREF-01**: `harvard` added as a facility in facilities.py with display name "Harvard Recreation"
-- [ ] **PREF-02**: Frontend FACILITIES list includes Harvard Recreation as a selectable option
+- [x] **PREF-02**: Frontend FACILITIES list includes Harvard Recreation as a selectable option
 - [x] **PREF-03**: Users can create preferences for Harvard facility + tennis sport with day/time filters
 - [x] **PREF-04**: Existing matcher.py correctly matches `harvard#tennis` composite key against user preferences
 
@@ -72,7 +72,7 @@
 | NOTF-03 | Phase 2 | Complete |
 | NOTF-04 | Phase 2 | Complete |
 | PREF-01 | Phase 2 | Complete |
-| PREF-02 | Phase 2 | Pending |
+| PREF-02 | Phase 2 | Complete |
 | PREF-03 | Phase 2 | Complete |
 | PREF-04 | Phase 2 | Complete |
 | OPS-01 | Phase 3 | Pending |

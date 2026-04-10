@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 02-01-PLAN.md — Harvard TDD RED phase tests
-last_updated: "2026-04-10T09:16:23.916Z"
+stopped_at: Completed 02-02-PLAN.md — Harvard GREEN phase
+last_updated: "2026-04-10T09:19:30.237Z"
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -48,6 +48,7 @@ Plan: 1 of 3
 *Updated after each plan completion*
 | Phase 01-scraper P03 | 6 | 2 tasks | 5 files |
 | Phase 02-integration P01 | 3 | 2 tasks | 4 files |
+| Phase 02-integration P02 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,7 @@ Recent decisions affecting current work:
 - [Phase 01-scraper]: fetch_lesson_instances imported at handler module level so tests can patch handler.fetch_lesson_instances directly
 - [Phase 02-integration]: Separate test file (test_harvard_integration.py) for Python 3.9 compat — test_notifications.py uses 3.10+ union syntax
 - [Phase 02-integration]: Added from __future__ import annotations to matcher.py and preferences/handler.py for Python 3.9 compatibility
+- [Phase 02-integration]: Per-facility CTA in email_builder.py uses matchi_id is None sentinel — Harvard gets gocrimson.com CTA, Matchi facilities get matchi.se CTA
 
 ### Pending Todos
 
@@ -78,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-10T09:16:19.162Z
-Stopped at: Completed 02-01-PLAN.md — Harvard TDD RED phase tests
+Last session: 2026-04-10T09:19:30.235Z
+Stopped at: Completed 02-02-PLAN.md — Harvard GREEN phase
 Resume file: None

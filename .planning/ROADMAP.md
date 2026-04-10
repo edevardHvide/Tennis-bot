@@ -71,5 +71,5 @@ Phases execute in numeric order: 1 → 2 → 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Scraper | 2/3 | In Progress|  |
-| 2. Integration | 1/3 | In Progress|  |
+| 2. Integration | 2/3 | In Progress|  |
 | 3. Deploy | 0/? | Not started | - |
