@@ -45,7 +45,12 @@ Plans:
   3. The same lesson slot does not trigger a second alert within the dedup TTL window
   4. "Harvard Recreation" appears as a selectable facility in the frontend PreferenceForm
   5. A user preference for `harvard` + `tennis` with day/time filters is matched correctly by the existing matcher.py
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — TDD RED: Harvard email/matcher/dedup/preferences tests (Wave 1)
+- [ ] 02-02-PLAN.md — Implement email_builder Harvard CTA + frontend FACILITIES entry (Wave 2)
+- [ ] 02-03-PLAN.md — Full test suite verification + frontend visual checkpoint (Wave 3)
 
 ### Phase 3: Deploy
 **Goal**: The Harvard scraper Lambda runs in production on a schedule with proper logging and externalized configuration
