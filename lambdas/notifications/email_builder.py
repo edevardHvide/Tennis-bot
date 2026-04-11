@@ -8,7 +8,7 @@ Produces SES-ready email bodies without any template engine dependency
 import random
 from datetime import datetime, timezone
 
-from facilities import facilities, get_matchi_id, get_display_name, SPORT_CODES
+from facilities import facilities, get_matchi_id, get_display_name, get_golfbox_config, SPORT_CODES
 
 MATCHI_GENERAL_URL = "https://www.matchi.se"
 HARVARD_REG_URL = (
@@ -71,11 +71,22 @@ def _facility_matchi_id(facility_key: str) -> int:
         return 0
 
 
-def _facility_cta(facility_key: str) -> tuple:
+def _facility_cta(facility_key: str, sport: str = "tennis", date: str = "") -> tuple:
     """Return (url, label) for the CTA button for a given facility.
 
-    Facilities with matchi_id=None are non-Matchi platforms (e.g. Harvard Rec).
+    Facilities with matchi_id=None are non-Matchi platforms (e.g. Harvard Rec, GolfBox).
     """
+    golfbox_config = get_golfbox_config(facility_key)
+    if golfbox_config and sport == "golf":
+        club_guid = golfbox_config["club_guid"]
+        resource_guid = golfbox_config["resource_guid"]
+        url = (
+            f"https://www.golfbox.no/portal/public/greenfee/greenfee.asp"
+            f"?ClubGUID={club_guid}&ResourceGUID={resource_guid}"
+        )
+        if date:
+            url += f"&Date={date}"
+        return url, "Book on GolfBox"
     matchi_id = _facility_matchi_id(facility_key)
     if matchi_id is None:
         return HARVARD_REG_URL, "Register at Harvard Rec"
@@ -133,7 +144,13 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
 
     # --- Subject (fun variation) ---
     prefix = random.choice(_SUBJECT_PREFIXES)
-    subject = f"Availability Monitor: {prefix} {total_courts} new court{'s' if total_courts != 1 else ''} available!"
+    # Use "tee time(s)" for golf-only notifications, "court(s)" otherwise
+    all_sports = {m.get("sport", "tennis") for m in matches}
+    if all_sports == {"golf"}:
+        slot_word = "tee time" if total_courts == 1 else "tee times"
+    else:
+        slot_word = "court" if total_courts == 1 else "courts"
+    subject = f"Availability Monitor: {prefix} {total_courts} new {slot_word} available!"
 
     # --- Group by facility + sport + date for display ---
     # { (facility_key, sport): { date: [court_dicts] } }
@@ -153,7 +170,8 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
         name = _facility_name(facility_key)
         sport_label = sport.title() if sport != "tennis" else ""
         heading = f"{name} — {sport_label}" if sport_label else name
-        cta_url, cta_label = _facility_cta(facility_key)
+        first_date = sorted(dates_map.keys())[0] if dates_map else ""
+        cta_url, cta_label = _facility_cta(facility_key, sport=sport, date=first_date)
         html_parts.append(f'<div class="facility">')
         html_parts.append(f"<h2>{heading}</h2>")
 
@@ -209,7 +227,8 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
         name = _facility_name(facility_key)
         sport_label = sport.title() if sport != "tennis" else ""
         heading = f"{name} — {sport_label}" if sport_label else name
-        cta_url, cta_label = _facility_cta(facility_key)
+        first_date = sorted(dates_map.keys())[0] if dates_map else ""
+        cta_url, cta_label = _facility_cta(facility_key, sport=sport, date=first_date)
         text_parts.append(heading)
         text_parts.append("-" * len(heading))
         for date_str, courts in sorted(dates_map.items()):
