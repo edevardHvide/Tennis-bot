@@ -9,6 +9,7 @@ NOTIFICATIONS_FN = tennis-notifications
 NEWSLETTER_FN  = tennis-newsletter
 FEEDBACK_FN    = tennis-feedback
 FESTIVAL_PREFS_FN = festival-preferences
+GOLF_SCRAPER_FN   = golf-scraper
 
 S3_FRONTEND_BUCKET = tennis-bot-frontend
 
@@ -17,6 +18,7 @@ S3_FRONTEND_BUCKET = tennis-bot-frontend
         package-scraper package-preferences package-notifications package-newsletter \
         package-feedback package-harvard-scraper deploy-dynamo \
         deploy-festival-dynamo package-festival-preferences deploy-festival-preferences \
+        package-golf-scraper deploy-golf-scraper \
         validate destroy
 
 # ── Help ─────────────────────────────────────────────────────────────────────
@@ -160,6 +162,27 @@ deploy-harvard-scraper: package-harvard-scraper
 	@aws lambda update-function-code \
 		--function-name $(HARVARD_SCRAPER_FN) \
 		--zip-file fileb://build/harvard-scraper.zip \
+		--profile $(PROFILE) --region $(REGION) \
+		--query 'LastUpdateStatus' --output text
+
+# ── Golf ──────────────────────────────────────────────────────────────────────
+
+package-golf-scraper:
+	@echo ">> Packaging golf-scraper Lambda..."
+	@rm -rf lambdas/golf-scraper/package lambdas/golf-scraper/build
+	@mkdir -p lambdas/golf-scraper/build
+	@uv pip install -r lambdas/golf-scraper/requirements.txt --target lambdas/golf-scraper/package
+	@powershell -Command "Compress-Archive -Path 'lambdas/golf-scraper/package/*' -DestinationPath 'lambdas/golf-scraper/build/function.zip' -Force"
+	@powershell -Command "Compress-Archive -Path 'lambdas/golf-scraper/handler.py','lambdas/golf-scraper/scraper.py','lambdas/golf-scraper/parser.py' -DestinationPath 'lambdas/golf-scraper/build/function.zip' -Update"
+	@cp facilities.py lambdas/golf-scraper/build/
+	@powershell -Command "Compress-Archive -Path 'lambdas/golf-scraper/build/facilities.py' -DestinationPath 'lambdas/golf-scraper/build/function.zip' -Update"
+	@echo "   lambdas/golf-scraper/build/function.zip ready"
+
+deploy-golf-scraper: package-golf-scraper
+	@echo ">> Deploying golf-scraper Lambda..."
+	@aws lambda update-function-code \
+		--function-name $(GOLF_SCRAPER_FN) \
+		--zip-file fileb://lambdas/golf-scraper/build/function.zip \
 		--profile $(PROFILE) --region $(REGION) \
 		--query 'LastUpdateStatus' --output text
 
