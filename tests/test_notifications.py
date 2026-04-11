@@ -8,6 +8,8 @@ Run with:
     pytest tests/test_notifications.py -v
 """
 
+from __future__ import annotations
+
 import hashlib
 import importlib
 import json
@@ -980,3 +982,118 @@ class TestHandler:
         assert response["statusCode"] == 200
         assert response["summary"]["matches_found"] == 1
         assert response["summary"]["emails_sent"] == 1
+
+
+# ===========================================================================
+# Golf minSpots matcher tests
+# ===========================================================================
+
+
+class TestGolfMinSpotsMatcher:
+    """Tests for _meets_min_spots filtering in the matcher."""
+
+    def test_min_spots_filters_out_insufficient(self):
+        from matcher import match_preferences
+
+        diff = _sample_diff(
+            facility="onsoy",
+            sport="golf",
+            date="2026-06-01",
+            time_slot="08:00-08:10",
+            courts=["Tee 1 (1 spot)", "Tee 2 (3 spots)", "Tee 3 (4 spots)"],
+        )
+        prefs = [
+            {
+                "userId": "golfer@test.com",
+                "preferenceId": "gp1",
+                "facilityId": "onsoy",
+                "sport": "golf",
+                "dates": ["monday"],
+                "timeFrom": "07:00",
+                "timeTo": "12:00",
+                "minSpots": 3,
+            },
+        ]
+        results = match_preferences(diff, prefs)
+        assert len(results) == 1
+        courts = results[0]["courts"]
+        court_names = [c["court_name"] for c in courts]
+        assert "Tee 1 (1 spot)" not in court_names
+        assert "Tee 2 (3 spots)" in court_names
+        assert "Tee 3 (4 spots)" in court_names
+
+    def test_min_spots_none_includes_all(self):
+        from matcher import match_preferences
+
+        diff = _sample_diff(
+            facility="onsoy",
+            sport="golf",
+            date="2026-06-01",
+            time_slot="08:00-08:10",
+            courts=["Tee 1 (1 spot)", "Tee 2 (2 spots)"],
+        )
+        prefs = [
+            {
+                "userId": "golfer@test.com",
+                "preferenceId": "gp2",
+                "facilityId": "onsoy",
+                "sport": "golf",
+                "dates": ["monday"],
+                "timeFrom": "07:00",
+                "timeTo": "12:00",
+            },
+        ]
+        results = match_preferences(diff, prefs)
+        assert len(results) == 1
+        assert len(results[0]["courts"]) == 2
+
+    def test_min_spots_no_match_when_all_below(self):
+        from matcher import match_preferences
+
+        diff = _sample_diff(
+            facility="onsoy",
+            sport="golf",
+            date="2026-06-01",
+            time_slot="08:00-08:10",
+            courts=["Tee 1 (1 spot)", "Tee 2 (2 spots)"],
+        )
+        prefs = [
+            {
+                "userId": "golfer@test.com",
+                "preferenceId": "gp3",
+                "facilityId": "onsoy",
+                "sport": "golf",
+                "dates": ["monday"],
+                "timeFrom": "07:00",
+                "timeTo": "12:00",
+                "minSpots": 4,
+            },
+        ]
+        results = match_preferences(diff, prefs)
+        assert len(results) == 0
+
+    def test_min_spots_court_without_spots_info_passes(self):
+        from matcher import match_preferences
+
+        diff = _sample_diff(
+            facility="onsoy",
+            sport="golf",
+            date="2026-06-01",
+            time_slot="09:00-09:10",
+            courts=["Tee 5"],
+        )
+        prefs = [
+            {
+                "userId": "golfer@test.com",
+                "preferenceId": "gp4",
+                "facilityId": "onsoy",
+                "sport": "golf",
+                "dates": ["monday"],
+                "timeFrom": "07:00",
+                "timeTo": "12:00",
+                "minSpots": 2,
+            },
+        ]
+        results = match_preferences(diff, prefs)
+        assert len(results) == 1
+        assert results[0]["courts"][0]["court_name"] == "Tee 5"

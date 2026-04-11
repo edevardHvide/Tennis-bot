@@ -10,6 +10,7 @@ A court in the diff matches a preference when:
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Optional
 from zoneinfo import ZoneInfo
@@ -60,6 +61,22 @@ def _court_type_matches(court_name: str, court_type: str | None) -> bool:
     return True
 
 
+def _meets_min_spots(court_name: str, min_spots: Optional[int]) -> bool:
+    """Check if a tee time court name meets the minimum spots requirement.
+
+    Golf court names encode available spots, e.g. "Tee 1 (3 spots)".
+    If min_spots is None or not set, all courts pass.
+    """
+    if not min_spots:
+        return True
+    match = re.search(r"\((\d+)\s*spot", court_name, re.IGNORECASE)
+    if not match:
+        # No spots info in name — include by default
+        return True
+    available = int(match.group(1))
+    return available >= min_spots
+
+
 def match_preferences(
     diff: dict[str, dict[str, dict[str, list[str]]]],
     preferences: list[dict],
@@ -103,6 +120,7 @@ def match_preferences(
         facility_id: str = pref.get("facilityId", "")
         sport: str = pref.get("sport", "tennis")
         court_type: str | None = pref.get("courtType")
+        min_spots: Optional[int] = pref.get("minSpots")
         pref_dates: list[str] = pref.get("dates", [])
         time_from: str = pref.get("timeFrom", "00:00")
         time_to: str = pref.get("timeTo", "23:59")
@@ -140,7 +158,7 @@ def match_preferences(
                 start = _slot_start_time(time_slot)
                 if start >= time_from and start < time_to:
                     for court_name in court_names:
-                        if _court_type_matches(court_name, court_type):
+                        if _court_type_matches(court_name, court_type) and _meets_min_spots(court_name, min_spots):
                             matched_courts.append({
                                 "time_slot": time_slot,
                                 "court_name": court_name,
