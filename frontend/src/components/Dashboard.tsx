@@ -8,6 +8,9 @@ import FeatureRequestModal from './FeatureRequestModal';
 import BlacklistCalendar from './BlacklistCalendar';
 import AvailabilityCalendar from './AvailabilityCalendar';
 import FestivalBetaCard from './FestivalBetaCard';
+import SportToggle, { type SportCategory } from './SportToggle';
+import GolfCalendar from './GolfCalendar';
+import GolfPreferenceForm from './GolfPreferenceForm';
 import { useTheme } from '../useTheme';
 
 type View = 'calendar' | 'preferences';
@@ -30,6 +33,22 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
   const [calendarKey, setCalendarKey] = useState(0);
   const { dark, toggle } = useTheme();
   const [awesomeMode, setAwesomeMode] = useState(false);
+  const [sportCategory, setSportCategory] = useState<SportCategory>(() => {
+    return (localStorage.getItem('sportCategory') as SportCategory) || 'racket';
+  });
+  const [showGolfForm, setShowGolfForm] = useState(false);
+
+  const handleSportCategoryChange = (cat: SportCategory) => {
+    setSportCategory(cat);
+    localStorage.setItem('sportCategory', cat);
+  };
+
+  const handleCreateGolfPreference = async (data: PreferenceFormData) => {
+    await createPreference(userId, data);
+    setShowGolfForm(false);
+    await fetchPreferences();
+    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+  };
 
   const fireAwesomeConfetti = () => {
     const duration = 3000;
@@ -176,6 +195,10 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
             </button>
           </div>
           <div className="flex items-center gap-3">
+            {/* Sport category toggle */}
+            <div className="hidden sm:block">
+              <SportToggle value={sportCategory} onChange={handleSportCategoryChange} />
+            </div>
             {/* Nav tabs */}
             <nav className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
               <button
@@ -286,7 +309,24 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
         )}
 
         {/* ── Calendar View (Main) ─────────────────────────────── */}
-        {!loading && view === 'calendar' && (
+        {!loading && view === 'calendar' && sportCategory === 'golf' && (
+          <div className="space-y-6">
+            <GolfCalendar userId={userId} />
+            <div className="text-center">
+              <button
+                onClick={() => { goToPreferences(); setShowGolfForm(true); }}
+                className="text-sm text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors inline-flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Add golf preference
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!loading && view === 'calendar' && sportCategory === 'racket' && (
           <>
             {preferences.length > 0 ? (
               <div className="space-y-6">
@@ -372,7 +412,57 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
         )}
 
         {/* ── Preferences View ─────────────────────────────── */}
-        {!loading && view === 'preferences' && (
+        {!loading && view === 'preferences' && sportCategory === 'golf' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Golf Preferences</h2>
+              {!showGolfForm && (
+                <button
+                  onClick={() => setShowGolfForm(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Preference
+                </button>
+              )}
+            </div>
+            {showGolfForm && (
+              <GolfPreferenceForm
+                onSubmit={handleCreateGolfPreference}
+                onCancel={() => setShowGolfForm(false)}
+              />
+            )}
+            {/* Golf preferences grid */}
+            {preferences.filter((p) => p.sport === 'golf').length > 0 && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {preferences.filter((p) => p.sport === 'golf').map((pref) => (
+                  <PreferenceCard
+                    key={pref.preferenceId}
+                    preference={pref}
+                    userId={userId}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            )}
+            {preferences.filter((p) => p.sport === 'golf').length === 0 && !showGolfForm && (
+              <div className="text-center py-12 text-gray-400 dark:text-gray-500">
+                <p className="mb-4">No golf preferences yet.</p>
+                <button
+                  onClick={() => setShowGolfForm(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                >
+                  Create Your First Golf Preference
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!loading && view === 'preferences' && sportCategory === 'racket' && (
           <>
             {/* Pause alerts calendar */}
             <div className="mb-6">
