@@ -82,8 +82,14 @@ def dynamo():
             BillingMode="PAY_PER_REQUEST",
         )
 
-        # Re-import handler inside the moto context so its module-level
-        # _dynamodb resource points at the mocked endpoint.
+        # Ensure the preferences handler is imported (not notifications handler)
+        # by clearing any cached module and forcing reimport from HANDLER_DIR
+        sys.modules.pop("handler", None)
+        if HANDLER_DIR not in sys.path or sys.path[0] != HANDLER_DIR:
+            if HANDLER_DIR in sys.path:
+                sys.path.remove(HANDLER_DIR)
+            sys.path.insert(0, HANDLER_DIR)
+
         import handler as h
 
         importlib.reload(h)
@@ -124,7 +130,7 @@ def _register_user(user_id="alice@example.com", name="Alice"):
 
 def _valid_pref_body():
     return {
-        "facilityId": "frogner",
+        "facilityId": "ota",
         "dates": ["monday", "sunday"],
         "timeFrom": "17:00",
         "timeTo": "22:00",
@@ -253,7 +259,7 @@ class TestListPreferences:
         assert response["statusCode"] == 200
         items = _body(response)["data"]
         assert len(items) == 1
-        assert items[0]["facilityId"] == "frogner"
+        assert items[0]["facilityId"] == "ota"
 
     def test_unknown_user_returns_404(self, dynamo):
         import handler as h
@@ -290,7 +296,7 @@ class TestCreatePreference:
         )
         assert response["statusCode"] == 201
         data = _body(response)["data"]
-        assert data["facilityId"] == "frogner"
+        assert data["facilityId"] == "ota"
         assert data["dates"] == ["monday", "sunday"]
         assert data["timeFrom"] == "17:00"
         assert data["timeTo"] == "22:00"
@@ -468,7 +474,7 @@ class TestCreatePreference:
         import handler as h
 
         _register_user()
-        for facility in ("frogner", "ota", "bergentennisarena"):
+        for facility in ("ota", "bergentennisarena", "nordstrand"):
             body = {**_valid_pref_body(), "facilityId": facility}
             response = h.lambda_handler(
                 _event(
@@ -544,11 +550,11 @@ class TestSportAndCourtType:
         assert data["facilityId"] == "ota"
 
     def test_padel_at_frogner_rejected(self, dynamo):
-        """Frogner only supports tennis, so padel should be rejected."""
+        """Nordstrand only supports tennis, so padel should be rejected."""
         import handler as h
 
         _register_user()
-        body = {**_valid_pref_body(), "facilityId": "frogner", "sport": "padel"}
+        body = {**_valid_pref_body(), "facilityId": "nordstrand", "sport": "padel"}
         response = h.lambda_handler(
             _event(
                 "POST",

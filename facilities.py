@@ -139,4 +139,7 @@ def get_facilities_for_sport(sport: str) -> dict[str, dict]:
 
 def get_golfbox_config(facility_key: str):
     """Return GolfBox config dict for a facility, or None if not a GolfBox facility."""
-    return facilities[facility_key].get("golfbox")
+    facility = facilities.get(facility_key)
+    if facility is None:
+        return None
+    return facility.get("golfbox")

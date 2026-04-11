@@ -110,7 +110,14 @@ def dynamo():
         ses = boto3.client("ses", region_name=REGION)
         ses.verify_email_identity(EmailAddress=SES_FROM_EMAIL)
 
-        # Reload handler so it picks up mocked resources
+        # Ensure the notifications handler is imported (not preferences handler)
+        # by clearing any cached module and forcing reimport from HANDLER_DIR
+        sys.modules.pop("handler", None)
+        if HANDLER_DIR not in sys.path or sys.path[0] != HANDLER_DIR:
+            if HANDLER_DIR in sys.path:
+                sys.path.remove(HANDLER_DIR)
+            sys.path.insert(0, HANDLER_DIR)
+
         import handler as h
 
         importlib.reload(h)
@@ -796,7 +803,7 @@ class TestEmailBuilder:
         ]
         email = build_notification_email("alice@test.com", matches)
         assert "https://www.matchi.se" in email["html_body"]
-        assert "Take me to Matchi" in email["html_body"]
+        assert "Book on Matchi" in email["html_body"]
         assert "facilityId=" not in email["html_body"]
 
     def test_html_contains_preferences_link(self):
