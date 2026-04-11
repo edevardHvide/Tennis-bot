@@ -79,8 +79,9 @@ export async function updateBlacklist(userId: string, dates: string[]): Promise<
   return response.data.data?.blacklistedDates ?? [];
 }
 
-export async function getAvailability(userId: string): Promise<AvailabilityResponse> {
-  const response = await api.get(`/users/${userId}/availability`);
+export async function getAvailability(userId: string, sport?: string): Promise<AvailabilityResponse> {
+  const params = sport ? { sport } : undefined;
+  const response = await api.get(`/users/${userId}/availability`, { params });
   return response.data.data ?? response.data;
 }
 

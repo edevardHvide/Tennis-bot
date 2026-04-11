@@ -1,4 +1,4 @@
-export type Sport = 'tennis' | 'padel';
+export type Sport = 'tennis' | 'padel' | 'golf';
 export type CourtType = 'double' | 'single';
 export type DayOfWeek =
   | 'monday'
@@ -46,6 +46,7 @@ export interface Preference {
   timeTo: string;
   sport: Sport;
   courtType?: CourtType;
+  minSpots?: number;
 }
 
 export interface PreferenceFormData {
@@ -56,6 +57,7 @@ export interface PreferenceFormData {
   timeTo: string;
   sport: Sport;
   courtType?: CourtType;
+  minSpots?: number;
 }
 
 export interface Facility {
@@ -75,6 +77,7 @@ export const FACILITIES: Facility[] = [
   { id: 'bergenpadelklubb', displayName: 'Bergen Padelklubb', sports: ['padel'] },
   { id: 'interpadelbergen', displayName: 'InterPadel Bergen (Sandsli)', sports: ['padel'] },
   { id: 'harvard', displayName: 'Harvard Recreation', sports: ['tennis'] },
+  { id: 'onsoy', displayName: 'Onsøy Golf', sports: ['golf'] },
 ];
 
 export interface HighscoreEntry {
