@@ -72,6 +72,15 @@ facilities = {
         "display_name": "Harvard Recreation",
         "sports": ["tennis"],
     },
+    "onsoy": {
+        "matchi_id": None,  # GolfBox platform, not matchi.se
+        "display_name": "Onsøy Golf",
+        "sports": ["golf"],
+        "golfbox": {
+            "resource_guid": "884D570B-7F66-4ECD-88E2-215E3B386422",
+            "club_guid": "A85DA1E0-B469-4702-BDBC-4E8972EC50A9",
+        },
+    },
 }
 
 # Inactive facilities — temporarily disabled to reduce scrape time
@@ -126,3 +135,8 @@ def get_facilities_for_sport(sport: str) -> dict[str, dict]:
         for key, config in facilities.items()
         if sport in config["sports"]
     }
+
+
+def get_golfbox_config(facility_key: str):
+    """Return GolfBox config dict for a facility, or None if not a GolfBox facility."""
+    return facilities[facility_key].get("golfbox")
