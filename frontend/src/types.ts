@@ -78,6 +78,10 @@ export const FACILITIES: Facility[] = [
   { id: 'interpadelbergen', displayName: 'InterPadel Bergen (Sandsli)', sports: ['padel'] },
   { id: 'harvard', displayName: 'Harvard Recreation', sports: ['tennis'] },
   { id: 'onsoy', displayName: 'Onsøy Golf', sports: ['golf'] },
+  { id: 'haga', displayName: 'Haga GK', sports: ['golf'] },
+  { id: 'grini', displayName: 'Grini GK', sports: ['golf'] },
+  { id: 'losby', displayName: 'Losby Golfklubb', sports: ['golf'] },
+  { id: 'rivertz', displayName: "Padelbane Arkitekt Rivertz' plass", sports: ['padel'] },
 ];
 
 export interface HighscoreEntry {

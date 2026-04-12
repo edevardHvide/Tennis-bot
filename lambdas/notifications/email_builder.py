@@ -8,7 +8,7 @@ Produces SES-ready email bodies without any template engine dependency
 import random
 from datetime import datetime, timezone
 
-from facilities import facilities, get_matchi_id, get_display_name, get_golfbox_config, SPORT_CODES
+from facilities import facilities, get_matchi_id, get_display_name, get_golfbox_config, get_oslobooking_config, SPORT_CODES
 
 MATCHI_GENERAL_URL = "https://www.matchi.se"
 HARVARD_REG_URL = (
@@ -87,6 +87,9 @@ def _facility_cta(facility_key: str, sport: str = "tennis", date: str = "") -> t
         if date:
             url += f"&Date={date}"
         return url, "Book on GolfBox"
+    oslobooking_config = get_oslobooking_config(facility_key)
+    if oslobooking_config:
+        return oslobooking_config["booking_url"], "Book on Oslo kommune"
     matchi_id = _facility_matchi_id(facility_key)
     if matchi_id is None:
         return HARVARD_REG_URL, "Register at Harvard Rec"

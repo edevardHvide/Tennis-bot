@@ -153,6 +153,9 @@ def lambda_handler(event: dict, context) -> dict:
 
     # Lazy imports so that cold-start errors surface clearly.
     from scraper import fetch_available_slots  # noqa: PLC0415
+    from oslobooking_scraper import (  # noqa: PLC0415
+        fetch_available_slots as fetch_oslobooking_slots,
+    )
     from diff import build_new_courts_diff     # noqa: PLC0415
 
     table = _get_dynamodb().Table(DYNAMODB_TABLE)
@@ -232,6 +235,73 @@ def lambda_handler(event: dict, context) -> dict:
 
             # Throttle to avoid 429 Too Many Requests from matchi.se
             time.sleep(REQUEST_DELAY)
+
+    # ------------------------------------------------------------------
+    # Oslo kommune booking platform (booking.oslo.kommune.no)
+    # ------------------------------------------------------------------
+    # Same snapshot/diff/persist shape as Matchi — only the fetch call
+    # differs. Capped per-facility by ``oslobooking.days_ahead`` since the
+    # kommune refuses bookings beyond 7 days out.
+    for facility_key, config in facilities.items():
+        osloc = config.get("oslobooking")
+        if not osloc:
+            continue
+
+        asset_id = osloc["bookable_asset_id"]
+        court_name = osloc.get("court_name", "Padelbane")
+        facility_days_ahead = min(osloc.get("days_ahead", DAYS_AHEAD), DAYS_AHEAD)
+        facility_dates = date_strings[:facility_days_ahead]
+
+        for sport in config["sports"]:
+            composite_key = f"{facility_key}#{sport}"
+            current_snapshot[composite_key] = {}
+            previous_snapshot[composite_key] = {}
+
+            consecutive_failures = 0
+
+            for date_str in facility_dates:
+                if consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD:
+                    _log("warning",
+                         "Circuit breaker tripped — skipping remaining dates",
+                         facility=composite_key,
+                         consecutive_failures=consecutive_failures,
+                         skipped_date=date_str)
+                    if composite_key not in facilities_skipped:
+                        facilities_skipped.append(composite_key)
+                    prev_slots = load_snapshot(table, composite_key, date_str)
+                    previous_snapshot[composite_key][date_str] = prev_slots
+                    current_snapshot[composite_key][date_str] = prev_slots
+                    continue
+
+                slot_start = time.monotonic()
+
+                prev_slots = load_snapshot(table, composite_key, date_str)
+                previous_snapshot[composite_key][date_str] = prev_slots
+
+                try:
+                    curr_slots = fetch_oslobooking_slots(
+                        asset_id, date_str, court_name=court_name
+                    )
+                    consecutive_failures = 0
+                except Exception as exc:
+                    _log("warning", "Failed to fetch oslobooking slots",
+                         facility=composite_key, date=date_str, error=str(exc))
+                    fetch_errors += 1
+                    consecutive_failures += 1
+                    curr_slots = prev_slots
+
+                current_snapshot[composite_key][date_str] = curr_slots
+                slot_count = sum(len(v) for v in curr_slots.values())
+                total_slots_fetched += slot_count
+
+                duration_ms = round((time.monotonic() - slot_start) * 1000)
+                _log("info", "Fetched oslobooking slots",
+                     facility=composite_key, date=date_str,
+                     slot_count=slot_count, duration_ms=duration_ms)
+
+                save_snapshot(table, composite_key, date_str, curr_slots)
+
+                time.sleep(REQUEST_DELAY)
 
     # --- Compute diff (new courts only) ---
     diff = build_new_courts_diff(current_snapshot, previous_snapshot)
