@@ -8,9 +8,13 @@ Produces SES-ready email bodies without any template engine dependency
 import random
 from datetime import datetime, timezone
 
-from facilities import facilities, get_matchi_id, get_display_name, SPORT_CODES
+from facilities import facilities, get_matchi_id, get_display_name, get_golfbox_config, get_oslobooking_config, SPORT_CODES
 
 MATCHI_GENERAL_URL = "https://www.matchi.se"
+HARVARD_REG_URL = (
+    "https://membership.gocrimson.com/Program/GetProgramInstances"
+    "?programID=a20e7ae2-fedc-4a8e-a7c3-236695040c63"
+)
 WEBAPP_URL = "https://availabilitymonitor.club"
 
 
@@ -67,6 +71,31 @@ def _facility_matchi_id(facility_key: str) -> int:
         return 0
 
 
+def _facility_cta(facility_key: str, sport: str = "tennis", date: str = "") -> tuple:
+    """Return (url, label) for the CTA button for a given facility.
+
+    Facilities with matchi_id=None are non-Matchi platforms (e.g. Harvard Rec, GolfBox).
+    """
+    golfbox_config = get_golfbox_config(facility_key)
+    if golfbox_config and sport == "golf":
+        club_guid = golfbox_config["club_guid"]
+        resource_guid = golfbox_config["resource_guid"]
+        url = (
+            f"https://www.golfbox.no/portal/public/greenfee/greenfee.asp"
+            f"?ClubGUID={club_guid}&ResourceGUID={resource_guid}"
+        )
+        if date:
+            url += f"&Date={date}"
+        return url, "Book on GolfBox"
+    oslobooking_config = get_oslobooking_config(facility_key)
+    if oslobooking_config:
+        return oslobooking_config["booking_url"], "Book on Oslo kommune"
+    matchi_id = _facility_matchi_id(facility_key)
+    if matchi_id is None:
+        return HARVARD_REG_URL, "Register at Harvard Rec"
+    return MATCHI_GENERAL_URL, "Book on Matchi"
+
+
 # ---------------------------------------------------------------------------
 # HTML email builder
 # ---------------------------------------------------------------------------
@@ -118,7 +147,13 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
 
     # --- Subject (fun variation) ---
     prefix = random.choice(_SUBJECT_PREFIXES)
-    subject = f"Availability Monitor: {prefix} {total_courts} new court{'s' if total_courts != 1 else ''} available!"
+    # Use "tee time(s)" for golf-only notifications, "court(s)" otherwise
+    all_sports = {m.get("sport", "tennis") for m in matches}
+    if all_sports == {"golf"}:
+        slot_word = "tee time" if total_courts == 1 else "tee times"
+    else:
+        slot_word = "court" if total_courts == 1 else "courts"
+    subject = f"Availability Monitor: {prefix} {total_courts} new {slot_word} available!"
 
     # --- Group by facility + sport + date for display ---
     # { (facility_key, sport): { date: [court_dicts] } }
@@ -136,9 +171,10 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
 
     for (facility_key, sport), dates_map in sorted(grouped.items()):
         name = _facility_name(facility_key)
-        matchi_id = _facility_matchi_id(facility_key)
         sport_label = sport.title() if sport != "tennis" else ""
         heading = f"{name} — {sport_label}" if sport_label else name
+        first_date = sorted(dates_map.keys())[0] if dates_map else ""
+        cta_url, cta_label = _facility_cta(facility_key, sport=sport, date=first_date)
         html_parts.append(f'<div class="facility">')
         html_parts.append(f"<h2>{heading}</h2>")
 
@@ -152,18 +188,18 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
                     f"</div>"
                 )
 
+        html_parts.append(
+            f'<div style="text-align:center; margin:12px 0 4px;">'
+            f'<a class="book-link" href="{cta_url}" '
+            f'style="display:inline-block; margin-top:8px; padding:10px 24px; '
+            f'background:#2c5f2d; color:#fff; text-decoration:none; border-radius:6px; '
+            f'font-size:14px; font-weight:bold;">'
+            f'{cta_label}</a>'
+            f'</div>'
+        )
         html_parts.append("</div>")
 
-    # --- General CTA buttons ---
-    html_parts.append(
-        f'<div style="text-align:center; margin:24px 0 16px;">'
-        f'<a class="book-link" href="{MATCHI_GENERAL_URL}" '
-        f'style="display:inline-block; margin-top:8px; padding:12px 28px; '
-        f'background:#2c5f2d; color:#fff; text-decoration:none; border-radius:6px; '
-        f'font-size:15px; font-weight:bold;">'
-        f'Take me to Matchi</a>'
-        f'</div>'
-    )
+    # --- Preferences link ---
     html_parts.append(
         f'<div style="text-align:center; margin:8px 0 20px;">'
         f'<a href="{WEBAPP_URL}" '
@@ -194,6 +230,8 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
         name = _facility_name(facility_key)
         sport_label = sport.title() if sport != "tennis" else ""
         heading = f"{name} — {sport_label}" if sport_label else name
+        first_date = sorted(dates_map.keys())[0] if dates_map else ""
+        cta_url, cta_label = _facility_cta(facility_key, sport=sport, date=first_date)
         text_parts.append(heading)
         text_parts.append("-" * len(heading))
         for date_str, courts in sorted(dates_map.items()):
@@ -202,9 +240,8 @@ def build_notification_email(user_id: str, matches: list[dict]) -> dict:
                 text_parts.append(
                     f"    {court['time_slot']}  {court['court_name']}"
                 )
+        text_parts.append(f"  {cta_label}: {cta_url}")
         text_parts.append("")
-
-    text_parts.append(f"Open Matchi: {MATCHI_GENERAL_URL}")
     text_parts.append(f"Update preferences: {WEBAPP_URL}")
     text_parts.append("")
     text_parts.append(f'"{quote}"')

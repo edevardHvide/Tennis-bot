@@ -3,18 +3,22 @@ REGION    ?= eu-north-1
 ACCOUNT   ?= 605893375372
 
 SCRAPER_FN    = tennis-scraper
+HARVARD_SCRAPER_FN = harvard-scraper
 PREFERENCES_FN = tennis-preferences
 NOTIFICATIONS_FN = tennis-notifications
 NEWSLETTER_FN  = tennis-newsletter
 FEEDBACK_FN    = tennis-feedback
 FESTIVAL_PREFS_FN = festival-preferences
+GOLF_SCRAPER_FN   = golf-scraper
 
 S3_FRONTEND_BUCKET = tennis-bot-frontend
 
 .PHONY: help install deploy-all deploy-scraper deploy-preferences deploy-notifications \
-        deploy-newsletter deploy-feedback deploy-frontend package-scraper package-preferences \
-        package-notifications package-newsletter package-feedback deploy-dynamo \
+        deploy-newsletter deploy-feedback deploy-harvard-scraper deploy-frontend \
+        package-scraper package-preferences package-notifications package-newsletter \
+        package-feedback package-harvard-scraper deploy-dynamo \
         deploy-festival-dynamo package-festival-preferences deploy-festival-preferences \
+        package-golf-scraper deploy-golf-scraper \
         validate destroy
 
 # ── Help ─────────────────────────────────────────────────────────────────────
@@ -102,6 +106,15 @@ package-feedback:
 	@cd lambdas/feedback/package && zip -qr ../../../build/feedback.zip .
 	@echo "   build/feedback.zip ready"
 
+package-harvard-scraper:
+	@echo ">> Packaging harvard-scraper Lambda..."
+	@mkdir -p build lambdas/harvard-scraper/package
+	@cd lambdas/harvard-scraper && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
+	@cd lambdas/harvard-scraper && cp *.py ./package/
+	@cp facilities.py lambdas/harvard-scraper/package/
+	@cd lambdas/harvard-scraper/package && zip -qr ../../../build/harvard-scraper.zip .
+	@echo "   build/harvard-scraper.zip ready"
+
 # ── Lambda deploy ─────────────────────────────────────────────────────────────
 
 deploy-scraper: package-scraper
@@ -141,6 +154,35 @@ deploy-feedback: package-feedback
 	@aws lambda update-function-code \
 		--function-name $(FEEDBACK_FN) \
 		--zip-file fileb://build/feedback.zip \
+		--profile $(PROFILE) --region $(REGION) \
+		--query 'LastUpdateStatus' --output text
+
+deploy-harvard-scraper: package-harvard-scraper
+	@echo ">> Deploying harvard-scraper Lambda..."
+	@aws lambda update-function-code \
+		--function-name $(HARVARD_SCRAPER_FN) \
+		--zip-file fileb://build/harvard-scraper.zip \
+		--profile $(PROFILE) --region $(REGION) \
+		--query 'LastUpdateStatus' --output text
+
+# ── Golf ──────────────────────────────────────────────────────────────────────
+
+package-golf-scraper:
+	@echo ">> Packaging golf-scraper Lambda..."
+	@rm -rf lambdas/golf-scraper/package lambdas/golf-scraper/build
+	@mkdir -p lambdas/golf-scraper/build
+	@uv pip install -r lambdas/golf-scraper/requirements.txt --target lambdas/golf-scraper/package
+	@powershell -Command "Compress-Archive -Path 'lambdas/golf-scraper/package/*' -DestinationPath 'lambdas/golf-scraper/build/function.zip' -Force"
+	@powershell -Command "Compress-Archive -Path 'lambdas/golf-scraper/handler.py','lambdas/golf-scraper/scraper.py','lambdas/golf-scraper/parser.py' -DestinationPath 'lambdas/golf-scraper/build/function.zip' -Update"
+	@cp facilities.py lambdas/golf-scraper/build/
+	@powershell -Command "Compress-Archive -Path 'lambdas/golf-scraper/build/facilities.py' -DestinationPath 'lambdas/golf-scraper/build/function.zip' -Update"
+	@echo "   lambdas/golf-scraper/build/function.zip ready"
+
+deploy-golf-scraper: package-golf-scraper
+	@echo ">> Deploying golf-scraper Lambda..."
+	@aws lambda update-function-code \
+		--function-name $(GOLF_SCRAPER_FN) \
+		--zip-file fileb://lambdas/golf-scraper/build/function.zip \
 		--profile $(PROFILE) --region $(REGION) \
 		--query 'LastUpdateStatus' --output text
 

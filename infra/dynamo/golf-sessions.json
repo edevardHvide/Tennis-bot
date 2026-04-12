@@ -1,0 +1,14 @@
+{
+  "TableName": "golf-sessions",
+  "KeySchema": [
+    { "AttributeName": "sessionId", "KeyType": "HASH" }
+  ],
+  "AttributeDefinitions": [
+    { "AttributeName": "sessionId", "AttributeType": "S" }
+  ],
+  "BillingMode": "PAY_PER_REQUEST",
+  "TimeToLiveSpecification": {
+    "AttributeName": "expiresAt",
+    "Enabled": true
+  }
+}

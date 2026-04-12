@@ -17,6 +17,11 @@ rich = "^13.7.0"
 
 
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: live integration tests requiring external service access",
+]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

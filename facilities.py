@@ -67,6 +67,61 @@ facilities = {
         "display_name": "InterPadel Bergen (Sandsli)",
         "sports": ["padel"],
     },
+    "harvard": {
+        "matchi_id": None,  # Harvard uses Innosoft Fusion, not matchi.se — no matchi_id
+        "display_name": "Harvard Recreation",
+        "sports": ["tennis"],
+    },
+    "onsoy": {
+        "matchi_id": None,  # GolfBox platform, not matchi.se
+        "display_name": "Onsøy Golf",
+        "sports": ["golf"],
+        "golfbox": {
+            "resource_guid": "884D570B-7F66-4ECD-88E2-215E3B386422",
+            "club_guid": "A85DA1E0-B469-4702-BDBC-4E8972EC50A9",
+        },
+    },
+    "haga": {
+        "matchi_id": None,
+        "display_name": "Haga GK",
+        "sports": ["golf"],
+        "golfbox": {
+            "resource_guid": "E95F6988-C683-43F8-919C-7F835DBFAF27",
+            "club_guid": "E0105CD4-744F-4323-9B70-426E833E2EE6",
+        },
+    },
+    "grini": {
+        "matchi_id": None,
+        "display_name": "Grini GK",
+        "sports": ["golf"],
+        "golfbox": {
+            "resource_guid": "1BEE50FC-669C-4383-A47E-5354F7AC08EC",
+            "club_guid": "EE00C492-7F02-4C2C-851B-8CDDC89181DB",
+        },
+    },
+    "losby": {
+        "matchi_id": None,
+        "display_name": "Losby Golfklubb",
+        "sports": ["golf"],
+        "golfbox": {
+            "resource_guid": "3C44C599-4A4C-40D9-8AF7-9F3CDB9EDD7F",
+            "club_guid": "90FA30D3-FF9D-4C3E-92C9-115B01A8D7BD",
+        },
+    },
+    "rivertz": {
+        "matchi_id": None,  # Oslo kommune booking platform, not matchi.se
+        "display_name": "Padelbane Arkitekt Rivertz' plass",
+        "sports": ["padel"],
+        "oslobooking": {
+            # booking.oslo.kommune.no — single public padel court in Sagene
+            "bookable_asset_id": "7ad1690a-e5d3-4ec2-885b-54c27d3d2741",
+            "court_name": "Padelbane",
+            # Kommune caps at 7 days ahead; further dates always return []
+            "days_ahead": 7,
+            # Deep link into the booking UI (used by email CTA)
+            "booking_url": "https://booking.oslo.kommune.no/ressurs?ressurs=7ad1690a-e5d3-4ec2-885b-54c27d3d2741",
+        },
+    },
 }
 
 # Inactive facilities — temporarily disabled to reduce scrape time
@@ -121,3 +176,19 @@ def get_facilities_for_sport(sport: str) -> dict[str, dict]:
         for key, config in facilities.items()
         if sport in config["sports"]
     }
+
+
+def get_golfbox_config(facility_key: str):
+    """Return GolfBox config dict for a facility, or None if not a GolfBox facility."""
+    facility = facilities.get(facility_key)
+    if facility is None:
+        return None
+    return facility.get("golfbox")
+
+
+def get_oslobooking_config(facility_key: str):
+    """Return Oslo kommune booking config for a facility, or None if not on that platform."""
+    facility = facilities.get(facility_key)
+    if facility is None:
+        return None
+    return facility.get("oslobooking")

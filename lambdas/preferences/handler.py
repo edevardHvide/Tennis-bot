@@ -15,11 +15,14 @@ DynamoDB tables (eu-north-1):
   tennis-availability PK: facilityId (composite), SK: date
 """
 
+from __future__ import annotations
+
 import json
 import os
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 OSLO_TZ = ZoneInfo("Europe/Oslo")
@@ -39,7 +42,7 @@ PREFS_TABLE = os.environ.get("PREFS_TABLE", "tennis-preferences")
 AVAILABILITY_TABLE = os.environ.get("AVAILABILITY_TABLE", "tennis-availability")
 
 VALID_FACILITY_IDS = set(facilities.keys())
-VALID_SPORTS = {"tennis", "padel"}
+VALID_SPORTS = {"tennis", "padel", "golf"}
 VALID_COURT_TYPES = {"double", "single"}
 VALID_DAY_NAMES = {
     "monday", "tuesday", "wednesday", "thursday",
@@ -174,6 +177,14 @@ def _validate_preference_body(body: dict) -> list[str]:
                 f"must be one of {sorted(VALID_COURT_TYPES)}"
             )
 
+    # minSpots validation (optional, golf only, int 1-4)
+    min_spots = body.get("minSpots")
+    if min_spots is not None:
+        if sport != "golf":
+            errors.append("minSpots is only valid when sport is 'golf'")
+        elif not isinstance(min_spots, int) or min_spots < 1 or min_spots > 4:
+            errors.append("minSpots must be an integer between 1 and 4")
+
     dates = body.get("dates")
     if not dates:
         errors.append("dates is required and must be a non-empty list")
@@ -294,6 +305,8 @@ def create_preference(event: dict, user_id: str) -> dict:
     }
     if sport == "padel" and "courtType" in body:
         item["courtType"] = body["courtType"]
+    if sport == "golf" and "minSpots" in body:
+        item["minSpots"] = body["minSpots"]
     _prefs_table().put_item(Item=item)
 
     return _created(item)
@@ -337,6 +350,8 @@ def update_preference(event: dict, user_id: str, preference_id: str) -> dict:
     }
     if sport == "padel" and "courtType" in body:
         item["courtType"] = body["courtType"]
+    if sport == "golf" and "minSpots" in body:
+        item["minSpots"] = body["minSpots"]
     _prefs_table().put_item(Item=item)
 
     return _ok(item)

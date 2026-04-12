@@ -82,8 +82,14 @@ def dynamo():
             BillingMode="PAY_PER_REQUEST",
         )
 
-        # Re-import handler inside the moto context so its module-level
-        # _dynamodb resource points at the mocked endpoint.
+        # Ensure the preferences handler is imported (not notifications handler)
+        # by clearing any cached module and forcing reimport from HANDLER_DIR
+        sys.modules.pop("handler", None)
+        if HANDLER_DIR not in sys.path or sys.path[0] != HANDLER_DIR:
+            if HANDLER_DIR in sys.path:
+                sys.path.remove(HANDLER_DIR)
+            sys.path.insert(0, HANDLER_DIR)
+
         import handler as h
 
         importlib.reload(h)
@@ -124,7 +130,7 @@ def _register_user(user_id="alice@example.com", name="Alice"):
 
 def _valid_pref_body():
     return {
-        "facilityId": "frogner",
+        "facilityId": "ota",
         "dates": ["monday", "sunday"],
         "timeFrom": "17:00",
         "timeTo": "22:00",
@@ -253,7 +259,7 @@ class TestListPreferences:
         assert response["statusCode"] == 200
         items = _body(response)["data"]
         assert len(items) == 1
-        assert items[0]["facilityId"] == "frogner"
+        assert items[0]["facilityId"] == "ota"
 
     def test_unknown_user_returns_404(self, dynamo):
         import handler as h
@@ -290,7 +296,7 @@ class TestCreatePreference:
         )
         assert response["statusCode"] == 201
         data = _body(response)["data"]
-        assert data["facilityId"] == "frogner"
+        assert data["facilityId"] == "ota"
         assert data["dates"] == ["monday", "sunday"]
         assert data["timeFrom"] == "17:00"
         assert data["timeTo"] == "22:00"
@@ -468,7 +474,7 @@ class TestCreatePreference:
         import handler as h
 
         _register_user()
-        for facility in ("frogner", "ota", "bergentennisarena"):
+        for facility in ("ota", "bergentennisarena", "nordstrand"):
             body = {**_valid_pref_body(), "facilityId": facility}
             response = h.lambda_handler(
                 _event(
@@ -544,11 +550,11 @@ class TestSportAndCourtType:
         assert data["facilityId"] == "ota"
 
     def test_padel_at_frogner_rejected(self, dynamo):
-        """Frogner only supports tennis, so padel should be rejected."""
+        """Nordstrand only supports tennis, so padel should be rejected."""
         import handler as h
 
         _register_user()
-        body = {**_valid_pref_body(), "facilityId": "frogner", "sport": "padel"}
+        body = {**_valid_pref_body(), "facilityId": "nordstrand", "sport": "padel"}
         response = h.lambda_handler(
             _event(
                 "POST",
@@ -974,3 +980,252 @@ class TestRouter:
             None,
         )
         assert response["statusCode"] == 404
+
+
+# ---------------------------------------------------------------------------
+# Harvard preferences tests — PREF-01, PREF-03
+# ---------------------------------------------------------------------------
+
+
+class TestCreatePreferenceHarvard:
+    """Tests verifying PREF-01 (harvard in VALID_FACILITY_IDS) and
+    PREF-03 (preferences API accepts harvard+tennis)."""
+
+    def test_harvard_in_valid_facility_ids(self):
+        """PREF-01: VALID_FACILITY_IDS must include 'harvard'."""
+        import importlib
+        import handler as h
+
+        assert "harvard" in h.VALID_FACILITY_IDS
+
+    def test_create_preference_harvard_tennis_accepted(self, dynamo):
+        """PREF-03: POST preference with facilityId=harvard sport=tennis returns 201."""
+        import handler as h
+
+        # Register user
+        h.lambda_handler(
+            _event("POST", "/users", {"userId": "test@harvard.edu", "name": "Test User"}),
+            None,
+        )
+
+        # Create harvard+tennis preference
+        resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "harvard",
+                    "sport": "tennis",
+                    "dates": ["monday", "wednesday"],
+                    "timeFrom": "09:00",
+                    "timeTo": "11:00",
+                },
+                path_params={"userId": "test@harvard.edu"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 201
+        data = _body(resp)["data"]
+        assert data["facilityId"] == "harvard"
+        assert data["sport"] == "tennis"
+
+    def test_create_preference_harvard_padel_rejected(self, dynamo):
+        """Harvard only supports tennis — padel preference must return 400."""
+        import handler as h
+
+        h.lambda_handler(
+            _event("POST", "/users", {"userId": "test2@harvard.edu", "name": "Test User 2"}),
+            None,
+        )
+
+        resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "harvard",
+                    "sport": "padel",
+                    "dates": ["monday"],
+                    "timeFrom": "09:00",
+                    "timeTo": "11:00",
+                },
+                path_params={"userId": "test2@harvard.edu"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 400
+        error = _body(resp)["error"]
+        assert "padel" in error.lower() or "harvard" in error.lower()
+
+    def test_create_preference_harvard_court_type_rejected(self, dynamo):
+        """courtType is only valid for padel — tennis + courtType must return 400."""
+        import handler as h
+
+        h.lambda_handler(
+            _event("POST", "/users", {"userId": "test3@harvard.edu", "name": "Test User 3"}),
+            None,
+        )
+
+        resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "harvard",
+                    "sport": "tennis",
+                    "courtType": "double",
+                    "dates": ["monday"],
+                    "timeFrom": "09:00",
+                    "timeTo": "11:00",
+                },
+                path_params={"userId": "test3@harvard.edu"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 400
+
+
+# ---------------------------------------------------------------------------
+# Golf preference validation
+# ---------------------------------------------------------------------------
+
+
+class TestGolfPreferences:
+    def test_create_golf_preference_valid(self, dynamo):
+        import handler as h
+
+        _register_user("golfer@example.com", "Golfer")
+        resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "onsoy",
+                    "sport": "golf",
+                    "dates": ["saturday"],
+                    "timeFrom": "07:00",
+                    "timeTo": "12:00",
+                    "minSpots": 2,
+                },
+                path_params={"userId": "golfer@example.com"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 201
+        data = _body(resp)["data"]
+        assert data["sport"] == "golf"
+        assert data["minSpots"] == 2
+
+    def test_golf_preference_without_minSpots(self, dynamo):
+        import handler as h
+
+        _register_user("golfer2@example.com", "Golfer2")
+        resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "onsoy",
+                    "sport": "golf",
+                    "dates": ["sunday"],
+                    "timeFrom": "08:00",
+                    "timeTo": "14:00",
+                },
+                path_params={"userId": "golfer2@example.com"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 201
+        data = _body(resp)["data"]
+        assert "minSpots" not in data
+
+    def test_minSpots_rejected_for_tennis(self, dynamo):
+        import handler as h
+
+        _register_user("tennis@example.com", "Tennis")
+        resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "ota",
+                    "sport": "tennis",
+                    "dates": ["monday"],
+                    "timeFrom": "17:00",
+                    "timeTo": "20:00",
+                    "minSpots": 2,
+                },
+                path_params={"userId": "tennis@example.com"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 400
+        assert "minSpots is only valid when sport is 'golf'" in _body(resp)["error"]
+
+    def test_minSpots_invalid_value_zero(self, dynamo):
+        import handler as h
+
+        _register_user("golfer3@example.com", "Golfer3")
+        resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "onsoy",
+                    "sport": "golf",
+                    "dates": ["friday"],
+                    "timeFrom": "09:00",
+                    "timeTo": "11:00",
+                    "minSpots": 0,
+                },
+                path_params={"userId": "golfer3@example.com"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 400
+        assert "minSpots must be an integer between 1 and 4" in _body(resp)["error"]
+
+    def test_minSpots_invalid_value_five(self, dynamo):
+        import handler as h
+
+        _register_user("golfer4@example.com", "Golfer4")
+        resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "onsoy",
+                    "sport": "golf",
+                    "dates": ["friday"],
+                    "timeFrom": "09:00",
+                    "timeTo": "11:00",
+                    "minSpots": 5,
+                },
+                path_params={"userId": "golfer4@example.com"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 400
+        assert "minSpots must be an integer between 1 and 4" in _body(resp)["error"]
+
+    def test_golf_invalid_facility(self, dynamo):
+        import handler as h
+
+        _register_user("golfer5@example.com", "Golfer5")
+        resp = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "ota",
+                    "sport": "golf",
+                    "dates": ["monday"],
+                    "timeFrom": "08:00",
+                    "timeTo": "12:00",
+                },
+                path_params={"userId": "golfer5@example.com"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 400
+        assert "does not support sport" in _body(resp)["error"]
