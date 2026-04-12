@@ -141,6 +141,77 @@ def test_golfbox_client_login_success(monkeypatch):
     assert client._logged_in is True
 
 
+# --- Task 4: Diff logic tests ---
+
+from handler import _extract_spots, _compute_new_slots
+
+
+def test_extract_spots_parses_spot_count():
+    assert _extract_spots("3 spots (845,-)") == 3
+    assert _extract_spots("1 spot (845,-)") == 1
+    assert _extract_spots("4 spots") == 4
+
+
+def test_extract_spots_returns_zero_on_no_match():
+    assert _extract_spots("Tee 5") == 0
+    assert _extract_spots("") == 0
+
+
+def test_compute_new_slots_brand_new_tee_included():
+    """A tee time not seen previously should be emitted."""
+    prev = {}
+    current = {"07:00": ["3 spots (845,-)"]}
+    assert _compute_new_slots(prev, current) == {"07:00": ["3 spots (845,-)"]}
+
+
+def test_compute_new_slots_spots_increased_included():
+    """Spots going 2 -> 3 should be emitted (user hadn't seen 3-spot state)."""
+    prev = {"07:00": ["2 spots (845,-)"]}
+    current = {"07:00": ["3 spots (845,-)"]}
+    assert _compute_new_slots(prev, current) == {"07:00": ["3 spots (845,-)"]}
+
+
+def test_compute_new_slots_spots_decreased_excluded():
+    """Spots going 4 -> 3 must NOT emit — user already saw the 4-spot state."""
+    prev = {"07:00": ["4 spots (845,-)"]}
+    current = {"07:00": ["3 spots (845,-)"]}
+    assert _compute_new_slots(prev, current) == {}
+
+
+def test_compute_new_slots_spots_unchanged_excluded():
+    """Same spot count on both sides is not a new state."""
+    prev = {"07:00": ["3 spots (845,-)"]}
+    current = {"07:00": ["3 spots (845,-)"]}
+    assert _compute_new_slots(prev, current) == {}
+
+
+def test_compute_new_slots_four_to_three_user_scenario():
+    """User scenario: minSpots=3, tee degrades 4->3, no notification."""
+    prev = {
+        "07:00": ["4 spots (845,-)"],
+        "07:09": ["4 spots (845,-)"],
+    }
+    current = {
+        "07:00": ["3 spots (845,-)"],  # degraded — excluded
+        "07:09": ["4 spots (845,-)"],  # unchanged — excluded
+    }
+    assert _compute_new_slots(prev, current) == {}
+
+
+def test_compute_new_slots_two_to_three_user_scenario():
+    """User scenario: spots 2->3, should notify (user hadn't seen 3-spot yet)."""
+    prev = {"07:00": ["2 spots (845,-)"]}
+    current = {"07:00": ["3 spots (845,-)"]}
+    assert _compute_new_slots(prev, current) == {"07:00": ["3 spots (845,-)"]}
+
+
+def test_compute_new_slots_description_without_spots_uses_raw_diff():
+    """Fallback to raw set-diff when description lacks a spot count."""
+    prev = {"07:00": ["Tee 5"]}
+    current = {"07:00": ["Tee 5", "Tee 6"]}
+    assert _compute_new_slots(prev, current) == {"07:00": ["Tee 6"]}
+
+
 def test_golfbox_client_login_failure(monkeypatch):
     """Test login failure returns False."""
     import requests

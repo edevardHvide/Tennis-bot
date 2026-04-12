@@ -9,6 +9,7 @@ import datetime
 import json
 import logging
 import os
+import re
 import time
 
 import boto3
@@ -100,6 +101,49 @@ def _save_snapshot(table, composite_key, date_str, slots):
     })
 
 
+def _extract_spots(description):
+    """Extract spot count from a slot description like '3 spots (845,-)'.
+
+    Returns 0 when no spot count can be parsed.
+    """
+    match = re.search(r"(\d+)\s*spot", description, re.IGNORECASE)
+    return int(match.group(1)) if match else 0
+
+
+def _compute_new_slots(prev_slots, current_slots):
+    """Return only slot entries whose spot count INCREASED vs. previous snapshot.
+
+    Golf tee times encode availability as e.g. "3 spots (price)". If a tee
+    previously had 4 spots and now has 3, the user already saw the 4-spot
+    notification; a degrade to 3 is not newly actionable. We only emit a
+    description when its spot count exceeds the max spot count previously
+    recorded for that time_key (0 if the tee was not seen before).
+
+    Descriptions without parseable spot counts fall back to raw set-diff
+    so non-golf callers / unknown formats still work.
+    """
+    new_slots = {}
+    for time_key, descriptions in current_slots.items():
+        prev_descriptions = prev_slots.get(time_key, [])
+        prev_max_spots = max(
+            (_extract_spots(d) for d in prev_descriptions),
+            default=0,
+        )
+        new_descriptions = []
+        for d in descriptions:
+            cur_spots = _extract_spots(d)
+            if cur_spots > 0:
+                if cur_spots > prev_max_spots:
+                    new_descriptions.append(d)
+            else:
+                # No parseable spot count — fall back to raw set-diff
+                if d not in prev_descriptions:
+                    new_descriptions.append(d)
+        if new_descriptions:
+            new_slots[time_key] = new_descriptions
+    return new_slots
+
+
 def _invoke_notifications(diff):
     """Invoke the notifications Lambda with the diff payload."""
     if not NOTIFICATIONS_FUNCTION:
@@ -184,14 +228,10 @@ def lambda_handler(event, context):
             # Save current snapshot
             _save_snapshot(availability_table, composite_key, date_str, current_slots)
 
-            # Diff against previous
+            # Diff against previous — spot-aware: only emit when spot
+            # count increased for a given tee (see _compute_new_slots).
             prev_slots = previous.get(date_str, {})
-            new_slots = {}
-            for time_key, descriptions in current_slots.items():
-                prev_descriptions = prev_slots.get(time_key, [])
-                new_descriptions = [d for d in descriptions if d not in prev_descriptions]
-                if new_descriptions:
-                    new_slots[time_key] = new_descriptions
+            new_slots = _compute_new_slots(prev_slots, current_slots)
 
             if new_slots:
                 facility_diff[date_str] = new_slots
