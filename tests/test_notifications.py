@@ -746,7 +746,13 @@ class TestDedup:
 
 
 class TestEmailBuilder:
-    def test_subject_single_court(self):
+    def test_subject_single_court(self, monkeypatch):
+        # Pin the random prefix so the 'courts' assertion isn't broken by
+        # prefixes that happen to contain the word 'courts' themselves
+        # (e.g. "New courts on the radar!").
+        import random
+        monkeypatch.setattr(random, "choice", lambda seq: "Court alert!")
+
         from email_builder import build_notification_email
 
         matches = [

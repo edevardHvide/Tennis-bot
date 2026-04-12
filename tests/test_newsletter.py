@@ -47,6 +47,7 @@ SES_FROM_EMAIL = "bot@tennis.test"
 
 # Fixed "today" = Tuesday 2026-03-10 → next Monday = 2026-03-16
 FIXED_TODAY = datetime.date(2026, 3, 10)
+FIXED_NOW = datetime.datetime(2026, 3, 10, 8, 0)
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +87,17 @@ def dynamo(monkeypatch):
         def today(cls):
             return FIXED_TODAY
 
+    # Also pin datetime.datetime.now so matcher._is_past_slot treats
+    # the seeded week (2026-03-16 …) as being in the present, not the past.
+    class FakeDatetime(datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            if tz is None:
+                return FIXED_NOW
+            return FIXED_NOW.replace(tzinfo=tz)
+
     monkeypatch.setattr(datetime, "date", FakeDate)
+    monkeypatch.setattr(datetime, "datetime", FakeDatetime)
 
     with mock_aws():
         client = boto3.client("dynamodb", region_name=REGION)
