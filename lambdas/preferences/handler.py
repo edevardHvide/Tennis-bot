@@ -22,6 +22,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -85,11 +86,19 @@ CORS_HEADERS = {
 }
 
 
+class _DecimalEncoder(json.JSONEncoder):
+    """Convert DynamoDB Decimal values to int/float for JSON serialization."""
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return int(o) if o == int(o) else float(o)
+        return super().default(o)
+
+
 def _ok(body, status=200):
     return {
         "statusCode": status,
         "headers": CORS_HEADERS,
-        "body": json.dumps({"data": body}),
+        "body": json.dumps({"data": body}, cls=_DecimalEncoder),
     }
 
 
