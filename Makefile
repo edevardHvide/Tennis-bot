@@ -64,8 +64,9 @@ deploy-athena:
 package-scraper:
 	@echo ">> Packaging scraper Lambda..."
 	@mkdir -p build
-	@cd lambdas/scraper && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
-	@cd lambdas/scraper && cp -r . ./package/ 2>/dev/null || true
+	@rm -rf lambdas/scraper/package
+	@uv pip install -r lambdas/scraper/requirements.txt --target lambdas/scraper/package --quiet
+	@cp lambdas/scraper/*.py lambdas/scraper/package/
 	@cp facilities.py lambdas/scraper/package/
 	@cd lambdas/scraper/package && zip -qr ../../../build/scraper.zip .
 	@echo "   build/scraper.zip ready"
@@ -73,8 +74,9 @@ package-scraper:
 package-preferences:
 	@echo ">> Packaging preferences Lambda..."
 	@mkdir -p build
-	@cd lambdas/preferences && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
-	@cd lambdas/preferences && cp -r . ./package/ 2>/dev/null || true
+	@rm -rf lambdas/preferences/package
+	@uv pip install -r lambdas/preferences/requirements.txt --target lambdas/preferences/package --quiet
+	@cp lambdas/preferences/*.py lambdas/preferences/package/
 	@cp facilities.py lambdas/preferences/package/
 	@cd lambdas/preferences/package && zip -qr ../../../build/preferences.zip .
 	@echo "   build/preferences.zip ready"
@@ -82,8 +84,9 @@ package-preferences:
 package-notifications:
 	@echo ">> Packaging notifications Lambda..."
 	@mkdir -p build
-	@cd lambdas/notifications && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
-	@cd lambdas/notifications && cp -r . ./package/ 2>/dev/null || true
+	@rm -rf lambdas/notifications/package
+	@uv pip install -r lambdas/notifications/requirements.txt --target lambdas/notifications/package --quiet
+	@cp lambdas/notifications/*.py lambdas/notifications/package/
 	@cp facilities.py lambdas/notifications/package/
 	@cd lambdas/notifications/package && zip -qr ../../../build/notifications.zip .
 	@echo "   build/notifications.zip ready"
@@ -91,8 +94,9 @@ package-notifications:
 package-newsletter:
 	@echo ">> Packaging newsletter Lambda..."
 	@mkdir -p build
-	@cd lambdas/newsletter && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
-	@cd lambdas/newsletter && cp -r . ./package/ 2>/dev/null || true
+	@rm -rf lambdas/newsletter/package
+	@uv pip install -r lambdas/newsletter/requirements.txt --target lambdas/newsletter/package --quiet
+	@cp lambdas/newsletter/*.py lambdas/newsletter/package/
 	@cp facilities.py lambdas/newsletter/package/
 	@cp lambdas/notifications/matcher.py lambdas/newsletter/package/
 	@cd lambdas/newsletter/package && zip -qr ../../../build/newsletter.zip .
@@ -101,16 +105,18 @@ package-newsletter:
 package-feedback:
 	@echo ">> Packaging feedback Lambda..."
 	@mkdir -p build
-	@cd lambdas/feedback && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
-	@cd lambdas/feedback && cp -r . ./package/ 2>/dev/null || true
+	@rm -rf lambdas/feedback/package
+	@uv pip install -r lambdas/feedback/requirements.txt --target lambdas/feedback/package --quiet
+	@cp lambdas/feedback/*.py lambdas/feedback/package/
 	@cd lambdas/feedback/package && zip -qr ../../../build/feedback.zip .
 	@echo "   build/feedback.zip ready"
 
 package-harvard-scraper:
 	@echo ">> Packaging harvard-scraper Lambda..."
-	@mkdir -p build lambdas/harvard-scraper/package
-	@cd lambdas/harvard-scraper && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
-	@cd lambdas/harvard-scraper && cp *.py ./package/
+	@mkdir -p build
+	@rm -rf lambdas/harvard-scraper/package
+	@uv pip install -r lambdas/harvard-scraper/requirements.txt --target lambdas/harvard-scraper/package --quiet
+	@cp lambdas/harvard-scraper/*.py lambdas/harvard-scraper/package/
 	@cp facilities.py lambdas/harvard-scraper/package/
 	@cd lambdas/harvard-scraper/package && zip -qr ../../../build/harvard-scraper.zip .
 	@echo "   build/harvard-scraper.zip ready"
@@ -195,8 +201,9 @@ deploy-festival-dynamo:
 package-festival-preferences:
 	@echo ">> Packaging festival-preferences Lambda..."
 	@mkdir -p build
-	@cd lambdas/festival-preferences && pip install -r requirements.txt -t ./package --quiet 2>/dev/null || true
-	@cd lambdas/festival-preferences && cp -r . ./package/ 2>/dev/null || true
+	@rm -rf lambdas/festival-preferences/package
+	@uv pip install -r lambdas/festival-preferences/requirements.txt --target lambdas/festival-preferences/package --quiet
+	@cp lambdas/festival-preferences/*.py lambdas/festival-preferences/package/
 	@cp festivals.py lambdas/festival-preferences/package/
 	@cd lambdas/festival-preferences/package && zip -qr ../../../build/festival-preferences.zip .
 	@echo "   build/festival-preferences.zip ready"

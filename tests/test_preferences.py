@@ -1229,3 +1229,48 @@ class TestGolfPreferences:
         )
         assert resp["statusCode"] == 400
         assert "does not support sport" in _body(resp)["error"]
+
+    def test_list_preferences_serializes_decimal_minSpots(self, dynamo):
+        """Regression: GET preferences must serialize DynamoDB Decimal values.
+
+        DynamoDB returns numeric fields (e.g. golf minSpots) as Decimal. A
+        previous version of _ok() called plain json.dumps() which raised
+        TypeError on Decimal, causing "Failed to load preferences" in the UI
+        for any user with a golf preference.
+        """
+        import handler as h
+
+        _register_user("golfer-decimal@example.com", "GolferDecimal")
+        create = h.lambda_handler(
+            _event(
+                "POST",
+                "/users/{userId}/preferences",
+                body={
+                    "facilityId": "onsoy",
+                    "sport": "golf",
+                    "dates": ["saturday"],
+                    "timeFrom": "07:00",
+                    "timeTo": "12:00",
+                    "minSpots": 2,
+                },
+                path_params={"userId": "golfer-decimal@example.com"},
+            ),
+            None,
+        )
+        assert create["statusCode"] == 201
+
+        # GET re-reads from DynamoDB, which returns minSpots as Decimal.
+        # Without _DecimalEncoder this raises TypeError inside json.dumps.
+        resp = h.lambda_handler(
+            _event(
+                "GET",
+                "/users/{userId}/preferences",
+                path_params={"userId": "golfer-decimal@example.com"},
+            ),
+            None,
+        )
+        assert resp["statusCode"] == 200
+        items = _body(resp)["data"]
+        assert len(items) == 1
+        assert items[0]["minSpots"] == 2
+        assert isinstance(items[0]["minSpots"], int)
