@@ -32,7 +32,6 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
   const [view, setView] = useState<View>('calendar');
   const [calendarKey, setCalendarKey] = useState(0);
   const { dark, toggle } = useTheme();
-  const [awesomeMode, setAwesomeMode] = useState(false);
   const [sportCategory, setSportCategory] = useState<SportCategory>(() => {
     return (localStorage.getItem('sportCategory') as SportCategory) || 'racket';
   });
@@ -48,36 +47,6 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
     setShowGolfForm(false);
     await fetchPreferences();
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-  };
-
-  const fireAwesomeConfetti = () => {
-    const duration = 3000;
-    const end = Date.now() + duration;
-    const colors = ['#ff0066', '#00c8ff', '#8b00ff', '#ff6400', '#00ff88', '#ffd700'];
-    const frame = () => {
-      confetti({
-        particleCount: 4,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0, y: 0.6 },
-        colors,
-      });
-      confetti({
-        particleCount: 4,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1, y: 0.6 },
-        colors,
-      });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    };
-    frame();
-  };
-
-  const toggleAwesomeMode = () => {
-    const next = !awesomeMode;
-    setAwesomeMode(next);
-    if (next) fireAwesomeConfetti();
   };
 
   const fetchPreferences = useCallback(async () => {
@@ -176,10 +145,9 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
 
   return (
     <div
-      className={`min-h-screen bg-cover bg-center bg-fixed ${awesomeMode ? 'awesome-mode-bg' : ''}`}
+      className="min-h-screen bg-cover bg-center bg-fixed"
       style={{ backgroundImage: "url('/tennis-court.jpg')" }}
     >
-      {awesomeMode && <div className="awesome-mode-lights" />}
       {/* Header */}
       <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
@@ -222,19 +190,6 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
                 Preferences
               </button>
             </nav>
-            <button
-              onClick={toggleAwesomeMode}
-              className={`p-2 rounded-lg transition-colors ${
-                awesomeMode
-                  ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 awesome-mode-glow'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-              title={awesomeMode ? 'Disable awesome mode' : 'Enable awesome mode'}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-              </svg>
-            </button>
             <button
               onClick={toggle}
               className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
