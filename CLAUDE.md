@@ -102,13 +102,23 @@ pip install -r requirements.txt -t ./package
 uv pip install -r requirements.txt --target ./package
 ```
 
-## IMPORTANT: `make` is not available on Windows
+## Deploy environment notes
 
-This repo runs on Windows (Git Bash). `make` is NOT installed. When deploying, use manual bash commands instead of `make` targets. See the Makefile for reference on what each target does, then replicate with bash.
+The user works from both Windows (Git Bash) and macOS. The Makefile uses `powershell -Command "Compress-Archive ..."` for zipping Lambda packages, which only works on Windows. On macOS, `make` itself is available, but the PowerShell-based `package-*` targets fail — replicate them with native `zip`:
 
-## IMPORTANT: `zip` is not available — use PowerShell instead
+```bash
+# macOS Lambda packaging — replaces the Makefile's powershell + Compress-Archive lines
+rm -rf lambdas/<name>/build && mkdir -p lambdas/<name>/build
+uv pip install -r lambdas/<name>/requirements.txt --target lambdas/<name>/package
+cp facilities.py lambdas/<name>/build/   # if the Lambda needs facilities
+(cd lambdas/<name>/package && zip -r /abs/path/to/lambdas/<name>/build/function.zip . -q)
+(cd lambdas/<name>/build && cp ../handler.py ../*.py . && zip -j function.zip handler.py *.py -q)
+aws lambda update-function-code --function-name <fn> --zip-file fileb:///abs/path/to/.../function.zip --region eu-north-1 --profile tennis-bot
+```
 
-Git Bash on this machine does **not** have `zip`. Use PowerShell's `Compress-Archive` to create zip files:
+Note that `aws lambda update-function-code --zip-file fileb://...` requires an **absolute path**; relative paths fail with `ParamValidation` because the AWS CLI resolves them against the cwd of the originating shell, not the current Bash call.
+
+On Windows (Git Bash), `make` is NOT installed and `zip` is unavailable — use PowerShell's `Compress-Archive`:
 
 ```bash
 # WRONG — zip is not installed
