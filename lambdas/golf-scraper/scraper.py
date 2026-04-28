@@ -42,6 +42,12 @@ class GolfBoxClient:
 
     def login(self):
         """Authenticate with GolfBox. Returns True on success."""
+        # Clear any cookies from a previous (possibly stale) session — keeping
+        # them around causes duplicate cookies (e.g. two ``logoutPage`` entries
+        # on different paths) that make ``dict(session.cookies)`` blow up with
+        # CookieConflictError when we try to cache the new session.
+        self._session.cookies.clear()
+
         resp = self._session.post(
             GOLFBOX_LOGIN_URL,
             data={
