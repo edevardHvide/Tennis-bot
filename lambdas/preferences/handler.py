@@ -480,13 +480,24 @@ def get_availability(event: dict, user_id: str) -> dict:
     Returns court availability for the next 7 days, filtered by the user's
     preferences (facility, sport, day-of-week, time window, court type).
     Includes freshness metadata per facility.
+
+    Optional ``sport`` query param (comma-separated) restricts results to
+    those sports — e.g. ``?sport=tennis,padel`` excludes golf preferences.
     """
     if not _user_exists(user_id):
         return _error(f"User {user_id!r} not found", status=404)
 
+    sport_param = (event.get("queryStringParameters") or {}).get("sport")
+    sport_filter = None
+    if sport_param:
+        sport_filter = {s.strip() for s in sport_param.split(",") if s.strip()}
+
     prefs = _prefs_table().query(
         KeyConditionExpression=Key("userId").eq(user_id)
     ).get("Items", [])
+
+    if sport_filter is not None:
+        prefs = [p for p in prefs if p.get("sport", "tennis") in sport_filter]
 
     if not prefs:
         return _ok({"days": [], "facilities": [], "freshness": {}})

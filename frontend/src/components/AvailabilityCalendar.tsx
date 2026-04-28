@@ -60,7 +60,7 @@ export default function AvailabilityCalendar({ userId }: Props) {
 
   const fetchData = useCallback(async () => {
     try {
-      const result = await getAvailability(userId);
+      const result = await getAvailability(userId, 'tennis,padel');
       setData(result);
       setError('');
     } catch {
