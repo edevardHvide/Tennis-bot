@@ -81,9 +81,12 @@ class GolfBoxClient:
             logger.error("Grid fetch non-200: status=%d url=%s", resp.status_code, url)
             return None
 
-        # Detect redirect to login page (session expired)
-        if "login.asp" in resp.url or len(resp.text) < 1000:
-            logger.warning("Session expired, grid fetch redirected to login")
+        # Detect logged-out response. GolfBox does not always redirect to
+        # login.asp for a stale session — sometimes it returns a 200 with a
+        # generic page that lacks the booking grid. The parser keys off the
+        # bookingGridv3 div, so use its absence as the session-expiry signal.
+        if "login.asp" in resp.url or "bookingGridv3" not in resp.text:
+            logger.warning("Session expired or grid missing for %s", date_str)
             self._logged_in = False
             return None
 
