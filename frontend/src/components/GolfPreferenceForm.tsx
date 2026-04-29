@@ -1,20 +1,21 @@
 import { useState } from 'react';
-import type { PreferenceFormData, DayOfWeek } from '../types';
+import type { Preference, PreferenceFormData, DayOfWeek } from '../types';
 import { ALL_DAYS, DAY_SHORT_LABELS, FACILITIES } from '../types';
 
 interface GolfPreferenceFormProps {
+  editing?: Preference | null;
   onSubmit: (data: PreferenceFormData) => Promise<void>;
   onCancel: () => void;
 }
 
 const GOLF_FACILITIES = FACILITIES.filter((f) => f.sports.includes('golf'));
 
-export default function GolfPreferenceForm({ onSubmit, onCancel }: GolfPreferenceFormProps) {
-  const [facilityId, setFacilityId] = useState(GOLF_FACILITIES[0]?.id ?? '');
-  const [days, setDays] = useState<DayOfWeek[]>([]);
-  const [timeFrom, setTimeFrom] = useState('06:00');
-  const [timeTo, setTimeTo] = useState('17:00');
-  const [minSpots, setMinSpots] = useState(1);
+export default function GolfPreferenceForm({ editing, onSubmit, onCancel }: GolfPreferenceFormProps) {
+  const [facilityId, setFacilityId] = useState(editing?.facilityId ?? GOLF_FACILITIES[0]?.id ?? '');
+  const [days, setDays] = useState<DayOfWeek[]>((editing?.dates as DayOfWeek[]) ?? []);
+  const [timeFrom, setTimeFrom] = useState(editing?.timeFrom ?? '06:00');
+  const [timeTo, setTimeTo] = useState(editing?.timeTo ?? '17:00');
+  const [minSpots, setMinSpots] = useState(editing?.minSpots ?? 1);
   const [submitting, setSubmitting] = useState(false);
 
   const toggleDay = (day: DayOfWeek) => {
@@ -41,7 +42,9 @@ export default function GolfPreferenceForm({ onSubmit, onCancel }: GolfPreferenc
 
   return (
     <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-5">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">New Golf Preference</h3>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        {editing ? 'Edit Golf Preference' : 'New Golf Preference'}
+      </h3>
 
       {/* Course selector */}
       <div>

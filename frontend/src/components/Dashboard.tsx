@@ -42,11 +42,25 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
     localStorage.setItem('sportCategory', cat);
   };
 
-  const handleCreateGolfPreference = async (data: PreferenceFormData) => {
-    await createPreference(userId, data);
+  const handleGolfFormSubmit = async (data: PreferenceFormData) => {
+    const { facilityIds: _ignored, ...apiData } = data;
+    const isNew = !editing;
+    if (editing) {
+      await updatePreference(userId, editing.preferenceId, apiData);
+    } else {
+      await createPreference(userId, apiData);
+    }
     setShowGolfForm(false);
+    setEditing(null);
     await fetchPreferences();
-    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    if (isNew) {
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    }
+  };
+
+  const handleGolfFormCancel = () => {
+    setShowGolfForm(false);
+    setEditing(null);
   };
 
   const fetchPreferences = useCallback(async () => {
@@ -77,7 +91,11 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
 
   const handleEdit = (preference: Preference) => {
     setEditing(preference);
-    setShowForm(true);
+    if (preference.sport === 'golf') {
+      setShowGolfForm(true);
+    } else {
+      setShowForm(true);
+    }
   };
 
   const handleDelete = async (preferenceId: string) => {
@@ -283,7 +301,7 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
 
         {!loading && view === 'calendar' && sportCategory === 'racket' && (
           <>
-            {preferences.length > 0 ? (
+            {preferences.filter((p) => p.sport !== 'golf').length > 0 ? (
               <div className="space-y-6">
                 <AvailabilityCalendar key={calendarKey} userId={userId} />
 
@@ -385,8 +403,9 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
             </div>
             {showGolfForm && (
               <GolfPreferenceForm
-                onSubmit={handleCreateGolfPreference}
-                onCancel={() => setShowGolfForm(false)}
+                editing={editing?.sport === 'golf' ? editing : null}
+                onSubmit={handleGolfFormSubmit}
+                onCancel={handleGolfFormCancel}
               />
             )}
             {/* Golf preferences grid */}
@@ -455,10 +474,10 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
               </div>
             )}
 
-            {/* Preferences grid */}
-            {preferences.length > 0 && (
+            {/* Preferences grid (racket only — golf prefs live under the Golf tab) */}
+            {preferences.filter((p) => p.sport !== 'golf').length > 0 && (
               <div className="grid gap-4 sm:grid-cols-2">
-                {preferences.map((pref) => (
+                {preferences.filter((p) => p.sport !== 'golf').map((pref) => (
                   <PreferenceCard
                     key={pref.preferenceId}
                     preference={pref}
@@ -470,7 +489,7 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
               </div>
             )}
 
-            {preferences.length === 0 && !showForm && (
+            {preferences.filter((p) => p.sport !== 'golf').length === 0 && !showForm && (
               <div className="text-center py-12 text-gray-400 dark:text-gray-500">
                 <p className="mb-4">No preferences yet.</p>
                 <button

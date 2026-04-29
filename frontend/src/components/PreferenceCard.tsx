@@ -27,6 +27,22 @@ export default function PreferenceCard({ preference, userId, onEdit, onDelete }:
   const sport = preference.sport ?? 'tennis';
   const daysLabel = formatDays(preference.dates);
 
+  const sportBadgeClass =
+    sport === 'tennis'
+      ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
+      : sport === 'padel'
+      ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
+      : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800';
+
+  const sportLabel = sport === 'tennis' ? 'Tennis' : sport === 'padel' ? 'Padel' : 'Golf';
+
+  const daysBadgeClass =
+    sport === 'tennis'
+      ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
+      : sport === 'padel'
+      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+      : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800';
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-4">
@@ -35,14 +51,8 @@ export default function PreferenceCard({ preference, userId, onEdit, onDelete }:
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {getFacilityDisplayName(preference.facilityId)}
             </h3>
-            <span
-              className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${
-                sport === 'tennis'
-                  ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
-                  : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-              }`}
-            >
-              {sport === 'tennis' ? 'Tennis' : 'Padel'}
+            <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${sportBadgeClass}`}>
+              {sportLabel}
             </span>
             {preference.courtType && (
               <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600">
@@ -93,13 +103,7 @@ export default function PreferenceCard({ preference, userId, onEdit, onDelete }:
 
       <div>
         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Days</p>
-        <span
-          className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${
-            sport === 'tennis'
-              ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
-              : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
-          }`}
-        >
+        <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${daysBadgeClass}`}>
           {daysLabel}
         </span>
       </div>
