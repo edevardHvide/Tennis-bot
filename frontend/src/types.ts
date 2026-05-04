@@ -70,6 +70,7 @@ export const FACILITIES: Facility[] = [
   { id: 'ota', displayName: 'OTA (Oslo Tennis Arena)', sports: ['tennis', 'padel'] },
   { id: 'bergentennisarena', displayName: 'Bergen Tennis Arena', sports: ['tennis'] },
   { id: 'voldslokka', displayName: 'Voldsløkka', sports: ['tennis'] },
+  { id: 'frogner', displayName: 'Frogner', sports: ['tennis'] },
   { id: 'furuset', displayName: 'Furuset', sports: ['tennis', 'padel'] },
   { id: 'interpadel', displayName: 'InterPadel Oslo', sports: ['padel'] },
   { id: 'nordicpadel', displayName: 'Nordic Padel', sports: ['padel'] },

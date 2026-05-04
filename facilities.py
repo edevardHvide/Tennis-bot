@@ -57,6 +57,11 @@ facilities = {
         "display_name": "Voldsløkka",
         "sports": ["tennis"],
     },
+    "frogner": {
+        "matchi_id": 2259,
+        "display_name": "Frogner",
+        "sports": ["tennis"],
+    },
     "bergenpadelklubb": {
         "matchi_id": 1659,
         "display_name": "Bergen Padelklubb",
@@ -126,11 +131,6 @@ facilities = {
 
 # Inactive facilities — temporarily disabled to reduce scrape time
 inactive_facilities = {
-    "frogner": {
-        "matchi_id": 2259,
-        "display_name": "Frogner",
-        "sports": ["tennis"],
-    },
     "ullern": {
         "matchi_id": 219,
         "display_name": "Ullern Tennisklubb",
