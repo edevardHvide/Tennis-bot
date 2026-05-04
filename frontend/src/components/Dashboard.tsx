@@ -233,27 +233,32 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
           </div>
         </div>
         {/* Mobile nav */}
-        <div className="sm:hidden border-t border-gray-200 dark:border-gray-700 flex">
-          <button
-            onClick={goToCalendar}
-            className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
-              view === 'calendar'
-                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400'
-                : 'text-gray-500 dark:text-gray-400'
-            }`}
-          >
-            Calendar
-          </button>
-          <button
-            onClick={goToPreferences}
-            className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
-              view === 'preferences'
-                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400'
-                : 'text-gray-500 dark:text-gray-400'
-            }`}
-          >
-            Preferences
-          </button>
+        <div className="sm:hidden border-t border-gray-200 dark:border-gray-700">
+          <div className="px-4 py-2 flex justify-center">
+            <SportToggle value={sportCategory} onChange={handleSportCategoryChange} />
+          </div>
+          <div className="border-t border-gray-200 dark:border-gray-700 flex">
+            <button
+              onClick={goToCalendar}
+              className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+                view === 'calendar'
+                  ? 'text-green-600 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              Calendar
+            </button>
+            <button
+              onClick={goToPreferences}
+              className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+                view === 'preferences'
+                  ? 'text-green-600 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              Preferences
+            </button>
+          </div>
         </div>
       </header>
 
