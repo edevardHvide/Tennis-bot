@@ -73,6 +73,7 @@ AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 NOTIFICATIONS_TABLE = os.environ.get("NOTIFICATIONS_TABLE", "tennis-notifications")
 PREFS_TABLE = os.environ.get("PREFS_TABLE", "tennis-preferences")
 USERS_TABLE = os.environ.get("USERS_TABLE", "tennis-users")
+WEATHER_TABLE = os.environ.get("WEATHER_TABLE", "tennis-weather")
 SES_FROM_EMAIL = os.environ.get("SES_FROM_EMAIL", "")
 
 # SMTP configuration (takes priority over SES when SMTP_HOST is set)
@@ -206,7 +207,9 @@ def lambda_handler(event: dict, context) -> dict:
     # Lazy imports from sibling modules
     from matcher import match_preferences          # noqa: PLC0415
     from dedup import filter_already_notified, record_notifications  # noqa: PLC0415
-    from email_builder import build_notification_email               # noqa: PLC0415
+    from email_builder import build_notification_email, sport_group_for  # noqa: PLC0415
+    from weather import make_weather_lookup                          # noqa: PLC0415
+    from facilities import get_weather_region                        # noqa: PLC0415
 
     diff = event.get("diff", {})
 
@@ -227,6 +230,8 @@ def lambda_handler(event: dict, context) -> dict:
     dynamo = _get_dynamodb()
     prefs_table = dynamo.Table(PREFS_TABLE)
     notif_table = dynamo.Table(NOTIFICATIONS_TABLE)
+    weather_table = dynamo.Table(WEATHER_TABLE)
+    weather_lookup = make_weather_lookup(weather_table, get_weather_region)
 
     # Step 1 — Load all preferences
     preferences = _scan_all_preferences(prefs_table)
@@ -258,15 +263,27 @@ def lambda_handler(event: dict, context) -> dict:
 
     emails_sent = 0
     for user_id, user_match_list in user_matches.items():
-        email = build_notification_email(user_id, user_match_list)
-        success = _send_email(
-            recipient=user_id,
-            subject=email["subject"],
-            html_body=email["html_body"],
-            text_body=email["text_body"],
-        )
-        if success:
-            emails_sent += 1
+        # Partition this user's matches by sport-group so a golfer never gets
+        # racket vocabulary and vice versa. One email per non-empty group.
+        by_group: dict[str, list[dict]] = {}
+        for m in user_match_list:
+            group = sport_group_for(m.get("sport", "tennis"))
+            by_group.setdefault(group, []).append(m)
+
+        for group, group_matches in by_group.items():
+            email = build_notification_email(
+                user_id, group_matches,
+                weather_lookup=weather_lookup,
+                sport_group=group,
+            )
+            success = _send_email(
+                recipient=user_id,
+                subject=email["subject"],
+                html_body=email["html_body"],
+                text_body=email["text_body"],
+            )
+            if success:
+                emails_sent += 1
 
     _log("info", "Emails sent", count=emails_sent)
 

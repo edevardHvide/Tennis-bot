@@ -69,6 +69,7 @@ AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 AVAILABILITY_TABLE = os.environ.get("AVAILABILITY_TABLE", "tennis-availability")
 PREFS_TABLE = os.environ.get("PREFS_TABLE", "tennis-preferences")
 USERS_TABLE = os.environ.get("USERS_TABLE", "tennis-users")
+WEATHER_TABLE = os.environ.get("WEATHER_TABLE", "tennis-weather")
 SES_FROM_EMAIL = os.environ.get("SES_FROM_EMAIL", "")
 NEWSLETTER_TEST_RECIPIENT = os.environ.get("NEWSLETTER_TEST_RECIPIENT", "")
 
@@ -249,9 +250,13 @@ def lambda_handler(event: dict, context) -> dict:
          prefs_table=PREFS_TABLE)
 
     from matcher import match_preferences              # noqa: PLC0415
-    from email_builder import build_newsletter_email   # noqa: PLC0415
+    from email_builder import build_newsletter_email, sport_group_for  # noqa: PLC0415
+    from weather import make_weather_lookup            # noqa: PLC0415
+    from facilities import get_weather_region          # noqa: PLC0415
 
     dynamo = _get_dynamodb()
+    weather_table = dynamo.Table(WEATHER_TABLE)
+    weather_lookup = make_weather_lookup(weather_table, get_weather_region)
 
     # Step 1 — Compute coming week dates
     week_dates = _compute_next_week()
@@ -321,18 +326,28 @@ def lambda_handler(event: dict, context) -> dict:
         else:
             user_matches = {}
 
-    # Step 7 — Send emails
+    # Step 7 — Send emails (one per sport-group per user)
     emails_sent = 0
     for user_id, user_match_list in user_matches.items():
-        email = build_newsletter_email(user_id, user_match_list, week_start, week_end)
-        success = _send_email(
-            recipient=user_id,
-            subject=email["subject"],
-            html_body=email["html_body"],
-            text_body=email["text_body"],
-        )
-        if success:
-            emails_sent += 1
+        by_group: dict[str, list[dict]] = {}
+        for m in user_match_list:
+            group = sport_group_for(m.get("sport", "tennis"))
+            by_group.setdefault(group, []).append(m)
+
+        for group, group_matches in by_group.items():
+            email = build_newsletter_email(
+                user_id, group_matches, week_start, week_end,
+                weather_lookup=weather_lookup,
+                sport_group=group,
+            )
+            success = _send_email(
+                recipient=user_id,
+                subject=email["subject"],
+                html_body=email["html_body"],
+                text_body=email["text_body"],
+            )
+            if success:
+                emails_sent += 1
 
     total_duration_ms = round((time.monotonic() - invocation_start) * 1000)
 

@@ -85,19 +85,19 @@ TEMPLATE = """\
             padding: 14px 20px; border-bottom: 1px solid #e2e8f0;
             display: flex; align-items: center; gap: 10px;
         }
-        .feature-header.green { background: linear-gradient(90deg, #f0fdf4, #dcfce7) !important; }
-        .feature-header.blue { background: linear-gradient(90deg, #eff6ff, #dbeafe) !important; }
-        .feature-header.amber { background: linear-gradient(90deg, #fffbeb, #fef3c7) !important; }
-        .feature-header.purple { background: linear-gradient(90deg, #faf5ff, #f3e8ff) !important; }
+        .feature-header.green { background: linear-gradient(90deg, #bbf7d0, #86efac) !important; }
+        .feature-header.blue { background: linear-gradient(90deg, #bfdbfe, #93c5fd) !important; }
+        .feature-header.amber { background: linear-gradient(90deg, #fde68a, #fcd34d) !important; }
+        .feature-header.purple { background: linear-gradient(90deg, #e9d5ff, #d8b4fe) !important; }
         .feature-icon { font-size: 22px; }
-        .feature-title { font-size: 14px; font-weight: 700; color: #0f172a !important; }
+        .feature-title { font-size: 14px; font-weight: 700; color: #1a1a1a !important; }
         .feature-body { padding: 14px 20px; background-color: #ffffff !important; font-size: 14px; color: #475569; line-height: 1.7; }
 
         /* CTA */
         .cta-section { text-align: center; margin: 32px 0 8px; }
         .cta-button {
             display: inline-block;
-            background: linear-gradient(135deg, #00c96b 0%, #059652 100%) !important;
+            background: linear-gradient(135deg, #047a44 0%, #035a32 100%) !important;
             color: #ffffff !important; text-decoration: none !important;
             font-size: 15px; font-weight: 700; letter-spacing: 0.03em;
             padding: 14px 36px; border-radius: 10px;
@@ -149,9 +149,9 @@ TEMPLATE = """\
         .footer {
             background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
             border-top: 1px solid #e2e8f0; padding: 24px 44px;
-            font-size: 12px; color: #94a3b8 !important; line-height: 1.8; text-align: center;
+            font-size: 12px; color: #475569 !important; line-height: 1.8; text-align: center;
         }
-        .footer a { color: #64748b !important; }
+        .footer a { color: #1f4a20 !important; font-weight: 600; }
 
         @media only screen and (max-width: 640px) {
             .email-wrapper { padding: 0; }
