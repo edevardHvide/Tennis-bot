@@ -50,5 +50,22 @@
       "AttributeName": "ttl"
     },
     "Comment": "Sent notification history for deduplication. Hash includes sport for independent dedup. Items expire after 24h (ttl = unix epoch)."
+  },
+  {
+    "TableName": "tennis-weather",
+    "KeySchema": [
+      { "AttributeName": "region", "KeyType": "HASH" },
+      { "AttributeName": "hourIso", "KeyType": "RANGE" }
+    ],
+    "AttributeDefinitions": [
+      { "AttributeName": "region", "AttributeType": "S" },
+      { "AttributeName": "hourIso", "AttributeType": "S" }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "TimeToLiveSpecification": {
+      "Enabled": true,
+      "AttributeName": "ttl"
+    },
+    "Comment": "Hourly weather forecasts from yr.no. PK=region (oslo|bergen|fredrikstad), SK=Oslo-local hourIso. Items expire ~14 days after the forecast hour."
   }
 ]

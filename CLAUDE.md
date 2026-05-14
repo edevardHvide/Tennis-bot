@@ -12,14 +12,15 @@ Serverless **multi-sport** court availability monitor. Scrapes [matchi.se](https
 
 ## Architecture
 
-Five AWS Lambda functions + React frontend:
+Six AWS Lambda functions + React frontend:
 
 1. **Scraper** (`lambdas/scraper/`) — EventBridge cron triggers scraping of matchi.se for all facility+sport pairs. Diffs against DynamoDB snapshots, invokes notifications Lambda with new slots. Uses composite keys `facility#sport` (e.g. `"ota#padel"`).
 2. **Preferences API** (`lambdas/preferences/`) — REST CRUD for user notification preferences (facility, sport, court type, dates, time range). Behind API Gateway.
-3. **Notifications** (`lambdas/notifications/`) — Matches scraper diffs against user preferences (facility + sport + day-of-week + time window + court type), deduplicates, sends HTML email via SES.
-4. **Newsletter** (`lambdas/newsletter/`) — Weekly summary email of upcoming availability. Uses shared `matcher.py` from notifications.
+3. **Notifications** (`lambdas/notifications/`) — Matches scraper diffs against user preferences (facility + sport + day-of-week + time window + court type), deduplicates, sends HTML email via SES. Enriches each slot with weather icon + temperature from `tennis-weather`.
+4. **Newsletter** (`lambdas/newsletter/`) — Weekly summary email of upcoming availability. Uses shared `matcher.py` from notifications. Also enriches slots with weather.
 5. **Feedback** (`lambdas/feedback/`) — Receives user feature requests via `POST /feedback`, saves to DynamoDB, and creates GitHub issues with `feature-request` label. Rate-limited to 1 request per user per 5 minutes.
-6. **Frontend** (`frontend/`) — React + TypeScript + Vite + Tailwind. Users register by email, select sport (tennis/padel), manage notification preferences, and submit feature requests.
+6. **Weather** (`lambdas/weather/`) — Scheduled (every 6h) yr.no fetcher. Stores hourly forecasts in `tennis-weather` keyed by region (oslo/bergen/fredrikstad), used by notifications + newsletter for slot-level weather. Uses `weather.py` shared module.
+7. **Frontend** (`frontend/`) — React + TypeScript + Vite + Tailwind. Users register by email, select sport (tennis/padel), manage notification preferences, and submit feature requests.
 
 **Local CLI** (`check_availability.py`) — Standalone polling bot with Windows toast + email alerts. Supports `--sport` and `--court-type` flags.
 
@@ -104,7 +105,7 @@ uv pip install -r requirements.txt --target ./package
 
 ## Deploy environment notes
 
-The user works from both Windows (Git Bash) and macOS. The Makefile uses `powershell -Command "Compress-Archive ..."` for zipping Lambda packages, which only works on Windows. On macOS, `make` itself is available, but the PowerShell-based `package-*` targets fail — replicate them with native `zip`:
+The user works from both Windows (Git Bash) and macOS. As of commit 29a2bfa the Makefile uses native `zip` for all `package-*` targets, so `make deploy-<lambda>` works directly on macOS. On Windows Git Bash you need a `zip` binary on PATH (Git for Windows extras, or use WSL). The legacy PowerShell snippets below are kept as a fallback if `zip` is unavailable:
 
 ```bash
 # macOS Lambda packaging — replaces the Makefile's powershell + Compress-Archive lines
@@ -166,6 +167,7 @@ make deploy-preferences  # Package & deploy preferences Lambda
 make deploy-notifications # Package & deploy notifications Lambda
 make deploy-newsletter   # Package & deploy newsletter Lambda
 make deploy-feedback     # Package & deploy feedback Lambda
+make deploy-weather      # Package & deploy weather Lambda
 make deploy-frontend     # Build & sync frontend to S3
 make deploy-dynamo       # Create/verify DynamoDB tables
 
@@ -186,6 +188,7 @@ python scripts/migrate_preferences_sport.py --profile tennis-bot [--dry-run]
 | tennis-availability | facilityId | date | Scraper snapshots. PK uses composite key: `facility#sport` (e.g. `"ota#padel"`) |
 | tennis-notifications | notificationId | — | Dedup with 24h TTL. Hash includes sport for independent dedup |
 | tennis-feedback | feedbackId | — | User feature requests. Backup for GitHub issues |
+| tennis-weather | region | hourIso | yr.no hourly forecasts. PK = `oslo`/`bergen`/`fredrikstad` (see `facilities.WEATHER_REGIONS`); SK is Oslo-local naive ISO hour. TTL ~14 days |
 
 ## Multi-Sport Key Conventions
 
@@ -194,6 +197,7 @@ python scripts/migrate_preferences_sport.py --profile tennis-bot [--dry-run]
 - **Preferences:** Have `sport` field (default `"tennis"`), `dates` field (list of lowercase day-of-week names, e.g. `["monday", "friday"]`), and optional `courtType` field
 - **Court type filtering (padel):** `"single"` matches courts with "single" in name; `"double"` matches courts WITHOUT "single" in name
 - **Booking URLs:** Use `sport=1` for tennis, `sport=5` for padel
+- **Golf `court_name` shape:** `golf-scraper/parser.py` emits `"N spot[s] (price,-)"` — count is OUTSIDE parens, price is INSIDE. The `_meets_min_spots` regex in `lambdas/notifications/matcher.py` MUST match this shape (use `(\d+)\s*spot`, NOT `\((\d+)\s*spot`). Tests previously used a synthetic `"Tee 1 (3 spots)"` shape that masked the real-data mismatch.
 
 ## Project Structure
 
