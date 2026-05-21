@@ -119,9 +119,11 @@ def test_golfbox_client_login_success(monkeypatch):
     import requests
 
     class MockResponse:
-        status_code = 302
+        status_code = 200
+        url = "https://www.golfbox.no/site/my_golfbox/myFrontPage.asp"
         headers = {"Location": "/site/my_golfbox/myFrontPage.asp"}
         cookies = requests.cookies.RequestsCookieJar()
+        text = "<html></html>"
 
     class MockSession:
         cookies = requests.cookies.RequestsCookieJar()
@@ -130,10 +132,7 @@ def test_golfbox_client_login_success(monkeypatch):
             return MockResponse()
 
         def get(self, *args, **kwargs):
-            resp = MockResponse()
-            resp.status_code = 200
-            resp.text = "<html></html>"
-            return resp
+            return MockResponse()
 
     client = GolfBoxClient(username="test", password="test")
     monkeypatch.setattr(client, "_session", MockSession())
@@ -218,13 +217,18 @@ def test_golfbox_client_login_failure(monkeypatch):
 
     class MockResponse:
         status_code = 200
+        url = "https://www.golfbox.no/login.asp"
         headers = {}
         cookies = requests.cookies.RequestsCookieJar()
+        text = ""
 
     class MockSession:
         cookies = requests.cookies.RequestsCookieJar()
 
         def post(self, *args, **kwargs):
+            return MockResponse()
+
+        def get(self, *args, **kwargs):
             return MockResponse()
 
     client = GolfBoxClient(username="test", password="wrong")

@@ -198,20 +198,25 @@ deploy-harvard-scraper: package-harvard-scraper
 
 package-golf-scraper:
 	@echo ">> Packaging golf-scraper Lambda..."
-	@rm -rf lambdas/golf-scraper/package lambdas/golf-scraper/build
-	@mkdir -p lambdas/golf-scraper/build
-	@uv pip install -r lambdas/golf-scraper/requirements.txt --target lambdas/golf-scraper/package
-	@powershell -Command "Compress-Archive -Path 'lambdas/golf-scraper/package/*' -DestinationPath 'lambdas/golf-scraper/build/function.zip' -Force"
-	@powershell -Command "Compress-Archive -Path 'lambdas/golf-scraper/handler.py','lambdas/golf-scraper/scraper.py','lambdas/golf-scraper/parser.py' -DestinationPath 'lambdas/golf-scraper/build/function.zip' -Update"
-	@cp facilities.py lambdas/golf-scraper/build/
-	@powershell -Command "Compress-Archive -Path 'lambdas/golf-scraper/build/facilities.py' -DestinationPath 'lambdas/golf-scraper/build/function.zip' -Update"
-	@echo "   lambdas/golf-scraper/build/function.zip ready"
+	@mkdir -p build
+	@rm -f build/golf-scraper.zip
+	@rm -rf lambdas/golf-scraper/package
+	@uv pip install -r lambdas/golf-scraper/requirements.txt \
+		--target lambdas/golf-scraper/package \
+		--python-platform x86_64-manylinux2014 \
+		--python-version 3.11 \
+		--only-binary=:all: \
+		--quiet
+	@cp lambdas/golf-scraper/*.py lambdas/golf-scraper/package/
+	@cp facilities.py lambdas/golf-scraper/package/
+	@cd lambdas/golf-scraper/package && zip -qr ../../../build/golf-scraper.zip .
+	@echo "   build/golf-scraper.zip ready"
 
 deploy-golf-scraper: package-golf-scraper
 	@echo ">> Deploying golf-scraper Lambda..."
 	@aws lambda update-function-code \
 		--function-name $(GOLF_SCRAPER_FN) \
-		--zip-file fileb://lambdas/golf-scraper/build/function.zip \
+		--zip-file fileb://$(PWD)/build/golf-scraper.zip \
 		--profile $(PROFILE) --region $(REGION) \
 		--query 'LastUpdateStatus' --output text
 

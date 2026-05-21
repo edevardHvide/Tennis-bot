@@ -107,6 +107,7 @@ facilities = {
         "golfbox": {
             "resource_guid": "884D570B-7F66-4ECD-88E2-215E3B386422",
             "club_guid": "A85DA1E0-B469-4702-BDBC-4E8972EC50A9",
+            "mcp_slug": "onsoy_gk",
         },
     },
     "haga": {
@@ -117,6 +118,7 @@ facilities = {
         "golfbox": {
             "resource_guid": "E95F6988-C683-43F8-919C-7F835DBFAF27",
             "club_guid": "E0105CD4-744F-4323-9B70-426E833E2EE6",
+            "mcp_slug": "haga_gk",
         },
     },
     "grini": {
@@ -127,6 +129,7 @@ facilities = {
         "golfbox": {
             "resource_guid": "1BEE50FC-669C-4383-A47E-5354F7AC08EC",
             "club_guid": "EE00C492-7F02-4C2C-851B-8CDDC89181DB",
+            "mcp_slug": "grini_gk",
         },
     },
     "losby": {
@@ -137,6 +140,7 @@ facilities = {
         "golfbox": {
             "resource_guid": "3C44C599-4A4C-40D9-8AF7-9F3CDB9EDD7F",
             "club_guid": "90FA30D3-FF9D-4C3E-92C9-115B01A8D7BD",
+            "mcp_slug": "losby_golfklubb",
         },
     },
     "rivertz": {

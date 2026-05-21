@@ -27,6 +27,15 @@ NOTIFICATIONS_FUNCTION = os.environ.get("NOTIFICATIONS_FUNCTION", "")
 DAYS_AHEAD = int(os.environ.get("SCRAPER_DAYS_AHEAD", "14"))
 AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 
+# Data-source switch. "mcp" = call Vardenlab's GolfBox MCP, which proxies
+# through a Norwegian IP and returns the member view (correct price tier,
+# real tournament blocks). "scrape" = legacy direct-GolfBox HTTP path, which
+# from AWS IPs gets the guest view (wrong price tier, false tournament
+# negatives). Defaults to mcp; requires the OAuth secret to be provisioned
+# first (scripts/golfbox_mcp_oauth_setup.py). Set GOLF_DATA_SOURCE=scrape to
+# fall back to the legacy path.
+GOLF_DATA_SOURCE = os.environ.get("GOLF_DATA_SOURCE", "mcp").lower()
+
 # Lazy-loaded AWS clients
 _dynamodb = None
 _lambda_client = None
@@ -158,29 +167,66 @@ def _invoke_notifications(diff):
     logger.info("Invoked notifications Lambda with %d facility keys", len(diff))
 
 
+def _fetch_slots_via_scrape(client, golfbox_config, date_str, _cache_session_cb):
+    """Legacy path: log into GolfBox, fetch HTML grid, parse."""
+    from parser import parse_grid_html
+
+    resource_guid = golfbox_config["resource_guid"]
+    club_guid = golfbox_config["club_guid"]
+
+    html = client.fetch_grid(resource_guid, club_guid, date_str)
+    if html is None and not client._logged_in:
+        logger.info("Re-logging in after session expiry")
+        if not client.login():
+            return None
+        _cache_session_cb(client.cookies_dict)
+        html = client.fetch_grid(resource_guid, club_guid, date_str)
+    if html is None:
+        return None
+    return parse_grid_html(html)
+
+
+def _fetch_slots_via_mcp(golfbox_config, date_str):
+    """MCP path: call Vardenlab MCP, map to parser-format dict."""
+    import mcp_client
+    from mcp_to_slots import mcp_slots_to_dict
+
+    mcp_slug = golfbox_config.get("mcp_slug")
+    if not mcp_slug:
+        logger.warning("Facility missing mcp_slug; skipping")
+        return None
+
+    mcp_slots = mcp_client.search_tee_times(mcp_slug, date_str, only_free=True)
+    return mcp_slots_to_dict(mcp_slots)
+
+
 def lambda_handler(event, context):
     """AWS Lambda entry point."""
-    from scraper import GolfBoxClient
-    from parser import parse_grid_html
     from facilities import get_facilities_for_sport, get_golfbox_config
 
     start_time = time.monotonic()
-    logger.info("Golf scraper invoked, days_ahead=%d", DAYS_AHEAD)
+    logger.info(
+        "Golf scraper invoked, days_ahead=%d, source=%s",
+        DAYS_AHEAD, GOLF_DATA_SOURCE,
+    )
 
-    # Initialize client
-    client = GolfBoxClient(GOLFBOX_USERNAME, GOLFBOX_PASSWORD)
+    # Legacy scrape path also needs login + session caching. MCP path is
+    # stateless from the handler's perspective; mcp_client manages its
+    # own token cache internally.
+    scrape_client = None
+    if GOLF_DATA_SOURCE == "scrape":
+        from scraper import GolfBoxClient
 
-    # Try cached session first
-    cached_cookies = _get_cached_session()
-    if cached_cookies:
-        client.restore_cookies(cached_cookies)
-        logger.info("Restored cached GolfBox session")
-    else:
-        if not client.login():
-            return {"statusCode": 500, "body": "GolfBox login failed"}
-        _cache_session(client.cookies_dict)
+        scrape_client = GolfBoxClient(GOLFBOX_USERNAME, GOLFBOX_PASSWORD)
+        cached_cookies = _get_cached_session()
+        if cached_cookies:
+            scrape_client.restore_cookies(cached_cookies)
+            logger.info("Restored cached GolfBox session")
+        else:
+            if not scrape_client.login():
+                return {"statusCode": 500, "body": "GolfBox login failed"}
+            _cache_session(scrape_client.cookies_dict)
 
-    # Prepare dates
     today = datetime.date.today()
     dates = [today + datetime.timedelta(days=i) for i in range(DAYS_AHEAD)]
     date_strings = [d.strftime("%Y-%m-%d") for d in dates]
@@ -191,6 +237,7 @@ def lambda_handler(event, context):
     full_diff = {}
     total_slots = 0
     fetch_errors = 0
+    auth_failures = 0
 
     for facility_key, config in golf_facilities.items():
         golfbox_config = get_golfbox_config(facility_key)
@@ -198,62 +245,67 @@ def lambda_handler(event, context):
             continue
 
         composite_key = f"{facility_key}#golf"
-        resource_guid = golfbox_config["resource_guid"]
-        club_guid = golfbox_config["club_guid"]
-
-        # Load previous snapshot
-        previous = _load_previous_snapshot(availability_table, composite_key, date_strings)
-
+        previous = _load_previous_snapshot(
+            availability_table, composite_key, date_strings,
+        )
         facility_diff = {}
 
         for date_str in date_strings:
-            html = client.fetch_grid(resource_guid, club_guid, date_str)
+            current_slots = None
 
-            # If session expired mid-scrape, re-login and retry
-            if html is None and not client._logged_in:
-                logger.info("Re-logging in after session expiry")
-                if not client.login():
+            if GOLF_DATA_SOURCE == "mcp":
+                import mcp_client
+
+                try:
+                    current_slots = _fetch_slots_via_mcp(golfbox_config, date_str)
+                except mcp_client.MCPAuthError as e:
+                    auth_failures += 1
+                    fetch_errors += 1
+                    logger.error("MCP auth failure: %s", e)
+                    continue
+                except Exception as e:
+                    fetch_errors += 1
+                    logger.warning(
+                        "MCP fetch error for %s/%s: %s", facility_key, date_str, e,
+                    )
+                    continue
+            else:
+                current_slots = _fetch_slots_via_scrape(
+                    scrape_client, golfbox_config, date_str, _cache_session,
+                )
+                if current_slots is None:
                     fetch_errors += 1
                     continue
-                _cache_session(client.cookies_dict)
-                html = client.fetch_grid(resource_guid, club_guid, date_str)
 
-            if html is None:
-                fetch_errors += 1
-                continue
-
-            current_slots = parse_grid_html(html)
             total_slots += len(current_slots)
-
-            # Save current snapshot
             _save_snapshot(availability_table, composite_key, date_str, current_slots)
 
-            # Diff against previous — spot-aware: only emit when spot
-            # count increased for a given tee (see _compute_new_slots).
             prev_slots = previous.get(date_str, {})
             new_slots = _compute_new_slots(prev_slots, current_slots)
-
             if new_slots:
                 facility_diff[date_str] = new_slots
 
         if facility_diff:
             full_diff[composite_key] = facility_diff
 
-    # Invoke notifications if we have new availability
     if full_diff:
         _invoke_notifications(full_diff)
 
     elapsed = time.monotonic() - start_time
     logger.info(
-        "Golf scraper complete: slots=%d, errors=%d, diff_keys=%d, elapsed=%.1fs",
-        total_slots, fetch_errors, len(full_diff), elapsed,
+        "Golf scraper complete: source=%s, slots=%d, errors=%d, auth_failures=%d, "
+        "diff_keys=%d, elapsed=%.1fs",
+        GOLF_DATA_SOURCE, total_slots, fetch_errors, auth_failures,
+        len(full_diff), elapsed,
     )
 
     return {
         "statusCode": 200,
         "body": json.dumps({
+            "source": GOLF_DATA_SOURCE,
             "totalSlots": total_slots,
             "fetchErrors": fetch_errors,
+            "authFailures": auth_failures,
             "diffFacilities": len(full_diff),
             "elapsed": round(elapsed, 1),
         }),
