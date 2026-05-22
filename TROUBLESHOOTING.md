@@ -69,3 +69,45 @@ Packaged and deployed via `aws lambda update-function-code`.
 - [ ] Verify a clean run completes and triggers notification emails
 - [ ] Monitor for a few cycles to confirm stability
 - [x] ~~Consider setting reserved concurrency to 1~~ — not possible (account `UnreservedConcurrentExecution` minimum of 10)
+
+---
+
+# Golf MCP auth-failure storm — 2026-05-21
+
+## Symptom
+First live `golf-scraper` run with `GOLF_DATA_SOURCE=mcp` produced
+`slots=0, errors=56, auth_failures=56`. CloudWatch showed one successful
+refresh, then a flood of `400 invalid_grant` interleaved with
+`429 too_many_requests` from `mcp.vardenlab.com`'s token endpoint.
+
+## Root cause (two compounding issues)
+1. **No circuit breaker.** The scraper iterates `facilities × DAYS_AHEAD`
+   (4 × 14 = 56). A broken OAuth chain fails identically for every
+   combination, so the handler retried all 56 — each a token refresh —
+   and Vardenlab rate-limited us (429). One bad token became 56 hammering
+   attempts.
+2. **Vardenlab rotates AND invalidates refresh tokens on every use.** The
+   first refresh succeeded and rotated the token, but `initialize` returned
+   no `Mcp-Session-Id` and the subsequent `tools/call` returned 401. The
+   client misread that 401 as an auth failure and refreshed again, burning
+   the just-rotated token → `invalid_grant` cascade.
+
+## Fixes applied
+- **Circuit breaker** (`handler.py`): abort the whole run once
+  `auth_failures >= MCP_AUTH_FAILURE_LIMIT` (default 3). One bad token now
+  costs a few log lines, not 56. Covered by `TestMcpAuthCircuitBreaker`.
+- **Immediate mitigation**: disabled `golf-scraper-schedule` EventBridge rule
+  and set `GOLF_DATA_SOURCE=scrape` to stop hammering the endpoint while the
+  remaining root cause (the `tools/call` 401 / session handling) is debugged.
+
+## STILL OPEN — do before re-enabling mcp source
+- [ ] Diagnose why `tools/call` returns 401 from the Lambda when the PoC on a
+      laptop (same code, same `session_id=None`) works. Prime suspects:
+      access-token `aud`/resource-audience mismatch, or Vardenlab binding the
+      token to the issuing IP. Decode the access-token JWT `aud` claim from a
+      fresh OAuth flow (don't burn a refresh just to test).
+- [ ] Re-provision the secret (current token likely burned by the storm).
+- [ ] Re-enable `golf-scraper-schedule` and flip `GOLF_DATA_SOURCE=mcp` only
+      after the 401 is understood and the breaker is deployed.
+- NOTE: we are likely still inside a Vardenlab rate-limit window — avoid
+  hitting the token endpoint until it clears.

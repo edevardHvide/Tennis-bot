@@ -605,3 +605,50 @@ class TestFetchSlotsViaScrape:
             lambda _: None,
         )
         assert result is None
+
+
+class TestMcpAuthCircuitBreaker:
+    """Regression for the 2026-05-21 incident: a broken OAuth chain must not
+    retry every facility+date and hammer the token endpoint into 429s."""
+
+    def _run_with_failing_mcp(self, n_facilities, limit):
+        import facilities as facilities_mod
+        handler = _load_golf_handler()
+        import mcp_client
+
+        handler.GOLF_DATA_SOURCE = "mcp"
+        handler.MCP_AUTH_FAILURE_LIMIT = limit
+        handler.DAYS_AHEAD = 14  # 14 dates per facility → 14*n potential calls
+
+        facs = {f"club{i}": {"sports": ["golf"]} for i in range(n_facilities)}
+        calls = {"n": 0}
+
+        def always_auth_fail(cfg, date_str):
+            calls["n"] += 1
+            raise mcp_client.MCPAuthError("simulated invalid_grant")
+
+        with patch.object(facilities_mod, "get_facilities_for_sport", return_value=facs), \
+             patch.object(facilities_mod, "get_golfbox_config",
+                          return_value={"mcp_slug": "x"}), \
+             patch.object(handler, "_get_dynamodb", return_value=MagicMock()), \
+             patch.object(handler, "_load_previous_snapshot", return_value={}), \
+             patch.object(handler, "_save_snapshot"), \
+             patch.object(handler, "_invoke_notifications"), \
+             patch.object(handler, "_fetch_slots_via_mcp", side_effect=always_auth_fail):
+            resp = handler.lambda_handler({}, None)
+        return calls["n"], resp
+
+    def test_aborts_after_limit_not_all_dates(self):
+        # 3 facilities * 14 dates = 42 potential calls; breaker must stop at 3.
+        n_calls, resp = self._run_with_failing_mcp(n_facilities=3, limit=3)
+        assert n_calls == 3
+        body = json.loads(resp["body"])
+        assert body["authAborted"] is True
+        assert body["authFailures"] == 3
+        assert body["totalSlots"] == 0
+
+    def test_limit_of_one_aborts_immediately(self):
+        n_calls, resp = self._run_with_failing_mcp(n_facilities=2, limit=1)
+        assert n_calls == 1
+        body = json.loads(resp["body"])
+        assert body["authAborted"] is True
