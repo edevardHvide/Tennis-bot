@@ -652,3 +652,93 @@ class TestMcpAuthCircuitBreaker:
         assert n_calls == 1
         body = json.loads(resp["body"])
         assert body["authAborted"] is True
+
+
+class TestMcpRunLock:
+    """The MCP path must run one-at-a-time — two concurrent invocations sharing
+    the rotating Vardenlab refresh token revoke each other's token family
+    (2026-05-21 incident). Reserved concurrency=1 is unavailable on this
+    account, so a DynamoDB conditional-write lock serializes runs instead."""
+
+    def test_acquire_returns_true_when_put_succeeds(self):
+        handler = _load_golf_handler()
+        table = MagicMock()
+        with patch.object(handler, "_get_dynamodb") as mock_db:
+            mock_db.return_value.Table.return_value = table
+            assert handler._acquire_run_lock() is True
+        # Conditional write guards against an existing live lock.
+        _, kwargs = table.put_item.call_args
+        assert "attribute_not_exists" in kwargs["ConditionExpression"]
+        assert kwargs["Item"]["sessionId"] == handler.RUN_LOCK_KEY
+
+    def test_acquire_returns_false_when_lock_held(self):
+        from botocore.exceptions import ClientError
+        handler = _load_golf_handler()
+        table = MagicMock()
+        table.put_item.side_effect = ClientError(
+            {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem",
+        )
+        with patch.object(handler, "_get_dynamodb") as mock_db:
+            mock_db.return_value.Table.return_value = table
+            assert handler._acquire_run_lock() is False
+
+    def test_acquire_reraises_unexpected_client_error(self):
+        from botocore.exceptions import ClientError
+        handler = _load_golf_handler()
+        table = MagicMock()
+        table.put_item.side_effect = ClientError(
+            {"Error": {"Code": "ProvisionedThroughputExceededException"}}, "PutItem",
+        )
+        with patch.object(handler, "_get_dynamodb") as mock_db:
+            mock_db.return_value.Table.return_value = table
+            with pytest.raises(ClientError):
+                handler._acquire_run_lock()
+
+    def test_release_deletes_lock_item(self):
+        handler = _load_golf_handler()
+        table = MagicMock()
+        with patch.object(handler, "_get_dynamodb") as mock_db:
+            mock_db.return_value.Table.return_value = table
+            handler._release_run_lock()
+        table.delete_item.assert_called_once_with(Key={"sessionId": handler.RUN_LOCK_KEY})
+
+    def test_handler_skips_when_lock_held(self):
+        handler = _load_golf_handler()
+        handler.GOLF_DATA_SOURCE = "mcp"
+        with patch.object(handler, "_acquire_run_lock", return_value=False), \
+             patch.object(handler, "_release_run_lock") as mock_release, \
+             patch.object(handler, "_run_scrape") as mock_run:
+            resp = handler.lambda_handler({}, None)
+        assert json.loads(resp["body"])["skipped"] == "locked"
+        mock_run.assert_not_called()
+        mock_release.assert_not_called()
+
+    def test_handler_releases_lock_after_mcp_run(self):
+        handler = _load_golf_handler()
+        handler.GOLF_DATA_SOURCE = "mcp"
+        with patch.object(handler, "_acquire_run_lock", return_value=True) as mock_acq, \
+             patch.object(handler, "_release_run_lock") as mock_release, \
+             patch.object(handler, "_run_scrape", return_value={"statusCode": 200, "body": "{}"}):
+            handler.lambda_handler({}, None)
+        mock_acq.assert_called_once()
+        mock_release.assert_called_once()
+
+    def test_handler_releases_lock_even_when_run_raises(self):
+        handler = _load_golf_handler()
+        handler.GOLF_DATA_SOURCE = "mcp"
+        with patch.object(handler, "_acquire_run_lock", return_value=True), \
+             patch.object(handler, "_release_run_lock") as mock_release, \
+             patch.object(handler, "_run_scrape", side_effect=RuntimeError("boom")):
+            with pytest.raises(RuntimeError):
+                handler.lambda_handler({}, None)
+        mock_release.assert_called_once()
+
+    def test_scrape_mode_does_not_touch_lock(self):
+        handler = _load_golf_handler()
+        handler.GOLF_DATA_SOURCE = "scrape"
+        with patch.object(handler, "_acquire_run_lock") as mock_acq, \
+             patch.object(handler, "_release_run_lock") as mock_release, \
+             patch.object(handler, "_run_scrape", return_value={"statusCode": 200, "body": "{}"}):
+            handler.lambda_handler({}, None)
+        mock_acq.assert_not_called()
+        mock_release.assert_not_called()

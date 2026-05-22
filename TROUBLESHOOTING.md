@@ -109,15 +109,46 @@ refresh, then a flood of `400 invalid_grant` interleaved with
 - Secret `golfbox-mcp-tokens` exists but its refresh token was burned by the
   storm (do not assume valid).
 
+## Root cause CONFIRMED — 2026-05-22 (supersedes the aud/IP hypothesis)
+
+The earlier guess (access-token `aud` mismatch / Vardenlab IP-binding) is
+**wrong**. CloudWatch for the 2026-05-21 05:56 run proves the MCP path works
+fine from Lambda:
+
+- `70039ca4` (invocation A): refresh OK 05:56:57 → `initialize` OK 05:56:59
+  (`session_id=None`) → **collected 874 slots across 3 facilities** before any
+  failure. 874 successful `tools/call`s from an AWS IP ⇒ token, audience, AND
+  IP are all fine. `session_id=None` is also fine — Vardenlab's golfbox MCP is
+  stateless.
+- `52a1ee1d` (invocation B): started 05:57:55 — **60s after A, concurrently**.
+  Refresh OK 05:57:58.
+- A's first failure is at 05:57:59 — **1 second after B's refresh**. From then
+  A logs `400 invalid_grant` on every re-refresh; B gets `slots=0, errors=56`.
+
+**Actual root cause: a concurrency race on the rotating refresh token.**
+Vardenlab rotates the refresh token on every use and applies refresh-token
+**reuse detection** (using a rotated-away token revokes the whole token
+family, incl. access tokens). Two overlapping invocations share one stored RT:
+B rotated RT1→RT2; when A then re-refreshed with its stale in-memory RT1,
+Vardenlab revoked the entire family → both invocations' tokens died → the
+per-call "401 → re-refresh" retry amplified it into the 429 storm.
+
+Why two concurrent invocations at all: the schedule is `rate(20 minutes)` and a
+run takes ~100s, so scheduled runs never overlap. The 05-21 overlap was manual
+test invokes (05:56:55 and 05:57:55). In normal scheduled operation MCP would
+not have raced — but nothing *prevents* concurrency (manual invoke during a
+scheduled run, or any future faster schedule).
+
 ## STILL OPEN — do before flipping back to mcp source
-- [ ] Diagnose why `tools/call` returns 401 from the Lambda when the PoC on a
-      laptop (same code, same `session_id=None`) works. Prime suspects:
-      access-token `aud`/resource-audience mismatch, or Vardenlab binding the
-      token to the issuing IP. Decode the access-token JWT `aud` claim from a
-      fresh OAuth flow (don't burn a refresh just to test).
-- [ ] Re-provision the secret (run `scripts/golfbox_mcp_oauth_setup.py` or the
-      manual flow) once the 401 root cause is fixed.
+- [ ] **Set reserved concurrency = 1 on `golf-scraper`** — the real fix.
+      Serializes access to the rotating RT so invocations can't poison each
+      other. One-line infra change, no code change. The circuit breaker stays
+      as a secondary guardrail.
+- [ ] Re-provision the secret (run `scripts/golfbox_mcp_oauth_setup.py`) — the
+      RT family was revoked, so the stored token is dead and must be replaced.
+      Interactive (browser PKCE), run from a workstation.
 - [ ] Flip `GOLF_DATA_SOURCE=mcp` and monitor one run for
       `auth_failures=0, source=mcp` before trusting it.
-- NOTE: we may still be inside a Vardenlab rate-limit window — avoid hitting
-  the token endpoint until it clears.
+- Optional hardening: cache the access token (valid ~1h) in the secret so
+  warm+cold invocations reuse it and only refresh ~once/hour, cutting RT
+  rotations from ~72/day to ~24/day (each rotation is a fragility point).

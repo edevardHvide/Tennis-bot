@@ -44,6 +44,16 @@ GOLF_DATA_SOURCE = os.environ.get("GOLF_DATA_SOURCE", "mcp").lower()
 # lines, not dozens. See the 2026-05-21 incident in TROUBLESHOOTING.md.
 MCP_AUTH_FAILURE_LIMIT = int(os.environ.get("MCP_AUTH_FAILURE_LIMIT", "3"))
 
+# Single-runner lock for the MCP path. Two concurrent invocations sharing the
+# rotating Vardenlab refresh token revoke each other's token family (see the
+# 2026-05-21 incident in TROUBLESHOOTING.md). Reserved concurrency=1 would be
+# the natural guard, but this account's Lambda concurrency limit is 10 and AWS
+# forbids dropping unreserved below 10, so we serialize with a DynamoDB
+# conditional-write lock instead. The TTL lets a crashed run's lock self-expire
+# (kept comfortably above the ~100s runtime, below the 20-min schedule).
+RUN_LOCK_KEY = "mcp-run-lock"
+RUN_LOCK_TTL = int(os.environ.get("MCP_RUN_LOCK_TTL", "300"))
+
 # Lazy-loaded AWS clients
 _dynamodb = None
 _lambda_client = None
@@ -92,6 +102,38 @@ def _cache_session(cookies):
         "cookies": json.dumps(cookies),
         "expiresAt": expires_at,
     })
+
+
+def _acquire_run_lock(ttl_seconds=RUN_LOCK_TTL):
+    """Acquire the MCP single-runner lock. Returns True if acquired.
+
+    Conditional write on the golf-sessions table: succeeds only when no lock
+    exists or the existing one has logically expired. Prevents two concurrent
+    invocations from racing on the rotating refresh token.
+    """
+    table = _get_dynamodb().Table(SESSION_TABLE)
+    now = int(time.time())
+    try:
+        table.put_item(
+            Item={"sessionId": RUN_LOCK_KEY, "expiresAt": now + ttl_seconds, "acquiredAt": now},
+            ConditionExpression="attribute_not_exists(sessionId) OR expiresAt < :now",
+            ExpressionAttributeValues={":now": now},
+        )
+        return True
+    except ClientError as e:
+        if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+            return False
+        raise
+
+
+def _release_run_lock():
+    """Release the MCP single-runner lock. Best-effort — a missed release just
+    falls back to TTL expiry."""
+    table = _get_dynamodb().Table(SESSION_TABLE)
+    try:
+        table.delete_item(Key={"sessionId": RUN_LOCK_KEY})
+    except ClientError as e:
+        logger.warning("Failed to release MCP run lock: %s", e)
 
 
 def _load_previous_snapshot(table, composite_key, date_strings):
@@ -210,13 +252,35 @@ def _fetch_slots_via_mcp(golfbox_config, date_str):
 
 def lambda_handler(event, context):
     """AWS Lambda entry point."""
-    from facilities import get_facilities_for_sport, get_golfbox_config
-
     start_time = time.monotonic()
     logger.info(
         "Golf scraper invoked, days_ahead=%d, source=%s",
         DAYS_AHEAD, GOLF_DATA_SOURCE,
     )
+
+    # MCP path must run one-at-a-time (rotating-refresh-token race). The scrape
+    # path is idempotent and concurrency-safe, so it skips the lock.
+    mcp_mode = GOLF_DATA_SOURCE == "mcp"
+    if mcp_mode and not _acquire_run_lock():
+        logger.warning(
+            "Another golf-scraper MCP run holds the lock; skipping this "
+            "invocation to avoid a refresh-token race",
+        )
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"source": GOLF_DATA_SOURCE, "skipped": "locked"}),
+        }
+
+    try:
+        return _run_scrape(start_time)
+    finally:
+        if mcp_mode:
+            _release_run_lock()
+
+
+def _run_scrape(start_time):
+    """Core scrape/MCP run. Wrapped by lambda_handler's run-lock."""
+    from facilities import get_facilities_for_sport, get_golfbox_config
 
     # Legacy scrape path also needs login + session caching. MCP path is
     # stateless from the handler's perspective; mcp_client manages its
