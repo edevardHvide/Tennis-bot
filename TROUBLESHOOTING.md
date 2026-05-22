@@ -96,18 +96,28 @@ refresh, then a flood of `400 invalid_grant` interleaved with
 - **Circuit breaker** (`handler.py`): abort the whole run once
   `auth_failures >= MCP_AUTH_FAILURE_LIMIT` (default 3). One bad token now
   costs a few log lines, not 56. Covered by `TestMcpAuthCircuitBreaker`.
-- **Immediate mitigation**: disabled `golf-scraper-schedule` EventBridge rule
-  and set `GOLF_DATA_SOURCE=scrape` to stop hammering the endpoint while the
-  remaining root cause (the `tools/call` 401 / session handling) is debugged.
+- **Immediate mitigation**: set `GOLF_DATA_SOURCE=scrape` and temporarily
+  disabled `golf-scraper-schedule` to stop hammering the token endpoint.
 
-## STILL OPEN — do before re-enabling mcp source
+## Current state (2026-05-21, end of session)
+- `GOLF_DATA_SOURCE=scrape` — Lambda runs the legacy GolfBox scrape path
+  (guest-view prices, the original issue, but functional). Verified manually:
+  3024 slots, 0 errors, 44s.
+- Circuit-breaker code **deployed**.
+- `golf-scraper-schedule` **re-enabled** at `rate(20 minutes)` — golf
+  notifications are flowing again on the scrape fallback.
+- Secret `golfbox-mcp-tokens` exists but its refresh token was burned by the
+  storm (do not assume valid).
+
+## STILL OPEN — do before flipping back to mcp source
 - [ ] Diagnose why `tools/call` returns 401 from the Lambda when the PoC on a
       laptop (same code, same `session_id=None`) works. Prime suspects:
       access-token `aud`/resource-audience mismatch, or Vardenlab binding the
       token to the issuing IP. Decode the access-token JWT `aud` claim from a
       fresh OAuth flow (don't burn a refresh just to test).
-- [ ] Re-provision the secret (current token likely burned by the storm).
-- [ ] Re-enable `golf-scraper-schedule` and flip `GOLF_DATA_SOURCE=mcp` only
-      after the 401 is understood and the breaker is deployed.
-- NOTE: we are likely still inside a Vardenlab rate-limit window — avoid
-  hitting the token endpoint until it clears.
+- [ ] Re-provision the secret (run `scripts/golfbox_mcp_oauth_setup.py` or the
+      manual flow) once the 401 root cause is fixed.
+- [ ] Flip `GOLF_DATA_SOURCE=mcp` and monitor one run for
+      `auth_failures=0, source=mcp` before trusting it.
+- NOTE: we may still be inside a Vardenlab rate-limit window — avoid hitting
+  the token endpoint until it clears.
