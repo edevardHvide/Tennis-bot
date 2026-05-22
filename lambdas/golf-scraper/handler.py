@@ -36,6 +36,14 @@ AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 # fall back to the legacy path.
 GOLF_DATA_SOURCE = os.environ.get("GOLF_DATA_SOURCE", "mcp").lower()
 
+# Circuit breaker for the MCP path. A broken OAuth chain fails identically for
+# every facility+date, so without this the handler would retry all
+# (facilities × DAYS_AHEAD) combinations — each a refresh attempt — and hammer
+# Vardenlab's token endpoint into rate-limiting (429). Once this many auth
+# failures accumulate, abort the whole run; one bad token = a handful of log
+# lines, not dozens. See the 2026-05-21 incident in TROUBLESHOOTING.md.
+MCP_AUTH_FAILURE_LIMIT = int(os.environ.get("MCP_AUTH_FAILURE_LIMIT", "3"))
+
 # Lazy-loaded AWS clients
 _dynamodb = None
 _lambda_client = None
@@ -238,8 +246,12 @@ def lambda_handler(event, context):
     total_slots = 0
     fetch_errors = 0
     auth_failures = 0
+    mcp_auth_aborted = False
 
     for facility_key, config in golf_facilities.items():
+        if mcp_auth_aborted:
+            break
+
         golfbox_config = get_golfbox_config(facility_key)
         if not golfbox_config:
             continue
@@ -262,6 +274,13 @@ def lambda_handler(event, context):
                     auth_failures += 1
                     fetch_errors += 1
                     logger.error("MCP auth failure: %s", e)
+                    if auth_failures >= MCP_AUTH_FAILURE_LIMIT:
+                        logger.error(
+                            "MCP auth failed %d times — aborting run to avoid "
+                            "hammering the token endpoint", auth_failures,
+                        )
+                        mcp_auth_aborted = True
+                        break
                     continue
                 except Exception as e:
                     fetch_errors += 1
@@ -294,9 +313,9 @@ def lambda_handler(event, context):
     elapsed = time.monotonic() - start_time
     logger.info(
         "Golf scraper complete: source=%s, slots=%d, errors=%d, auth_failures=%d, "
-        "diff_keys=%d, elapsed=%.1fs",
+        "auth_aborted=%s, diff_keys=%d, elapsed=%.1fs",
         GOLF_DATA_SOURCE, total_slots, fetch_errors, auth_failures,
-        len(full_diff), elapsed,
+        mcp_auth_aborted, len(full_diff), elapsed,
     )
 
     return {
@@ -306,6 +325,7 @@ def lambda_handler(event, context):
             "totalSlots": total_slots,
             "fetchErrors": fetch_errors,
             "authFailures": auth_failures,
+            "authAborted": mcp_auth_aborted,
             "diffFacilities": len(full_diff),
             "elapsed": round(elapsed, 1),
         }),
