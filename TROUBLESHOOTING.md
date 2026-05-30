@@ -74,6 +74,14 @@ Packaged and deployed via `aws lambda update-function-code`.
 
 # Golf MCP auth-failure storm — 2026-05-21
 
+> **CLOSED 2026-05-30 — MCP path deleted.** GolfBox ordered Vardenlab's MCP
+> shut down (2026-05-26); every `tools/call` now returns a disablement string.
+> All MCP code was removed (`mcp_client.py`, `mcp_to_slots.py`,
+> `scripts/golfbox_mcp_*.py`, `tests/test_golf_mcp.py`, the `GOLF_DATA_SOURCE`
+> switch + run-lock + circuit-breaker in `handler.py`, `mcp_slug` in
+> `facilities.py`). golf-scraper now scrapes GolfBox directly as its only path.
+> The "STILL OPEN" items below are obsolete — kept for incident history only.
+
 ## Symptom
 First live `golf-scraper` run with `GOLF_DATA_SOURCE=mcp` produced
 `slots=0, errors=56, auth_failures=56`. CloudWatch showed one successful

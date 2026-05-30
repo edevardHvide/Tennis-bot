@@ -27,33 +27,6 @@ NOTIFICATIONS_FUNCTION = os.environ.get("NOTIFICATIONS_FUNCTION", "")
 DAYS_AHEAD = int(os.environ.get("SCRAPER_DAYS_AHEAD", "14"))
 AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 
-# Data-source switch. "mcp" = call Vardenlab's GolfBox MCP, which proxies
-# through a Norwegian IP and returns the member view (correct price tier,
-# real tournament blocks). "scrape" = legacy direct-GolfBox HTTP path, which
-# from AWS IPs gets the guest view (wrong price tier, false tournament
-# negatives). Defaults to mcp; requires the OAuth secret to be provisioned
-# first (scripts/golfbox_mcp_oauth_setup.py). Set GOLF_DATA_SOURCE=scrape to
-# fall back to the legacy path.
-GOLF_DATA_SOURCE = os.environ.get("GOLF_DATA_SOURCE", "mcp").lower()
-
-# Circuit breaker for the MCP path. A broken OAuth chain fails identically for
-# every facility+date, so without this the handler would retry all
-# (facilities × DAYS_AHEAD) combinations — each a refresh attempt — and hammer
-# Vardenlab's token endpoint into rate-limiting (429). Once this many auth
-# failures accumulate, abort the whole run; one bad token = a handful of log
-# lines, not dozens. See the 2026-05-21 incident in TROUBLESHOOTING.md.
-MCP_AUTH_FAILURE_LIMIT = int(os.environ.get("MCP_AUTH_FAILURE_LIMIT", "3"))
-
-# Single-runner lock for the MCP path. Two concurrent invocations sharing the
-# rotating Vardenlab refresh token revoke each other's token family (see the
-# 2026-05-21 incident in TROUBLESHOOTING.md). Reserved concurrency=1 would be
-# the natural guard, but this account's Lambda concurrency limit is 10 and AWS
-# forbids dropping unreserved below 10, so we serialize with a DynamoDB
-# conditional-write lock instead. The TTL lets a crashed run's lock self-expire
-# (kept comfortably above the ~100s runtime, below the 20-min schedule).
-RUN_LOCK_KEY = "mcp-run-lock"
-RUN_LOCK_TTL = int(os.environ.get("MCP_RUN_LOCK_TTL", "300"))
-
 # Lazy-loaded AWS clients
 _dynamodb = None
 _lambda_client = None
@@ -102,38 +75,6 @@ def _cache_session(cookies):
         "cookies": json.dumps(cookies),
         "expiresAt": expires_at,
     })
-
-
-def _acquire_run_lock(ttl_seconds=RUN_LOCK_TTL):
-    """Acquire the MCP single-runner lock. Returns True if acquired.
-
-    Conditional write on the golf-sessions table: succeeds only when no lock
-    exists or the existing one has logically expired. Prevents two concurrent
-    invocations from racing on the rotating refresh token.
-    """
-    table = _get_dynamodb().Table(SESSION_TABLE)
-    now = int(time.time())
-    try:
-        table.put_item(
-            Item={"sessionId": RUN_LOCK_KEY, "expiresAt": now + ttl_seconds, "acquiredAt": now},
-            ConditionExpression="attribute_not_exists(sessionId) OR expiresAt < :now",
-            ExpressionAttributeValues={":now": now},
-        )
-        return True
-    except ClientError as e:
-        if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
-            return False
-        raise
-
-
-def _release_run_lock():
-    """Release the MCP single-runner lock. Best-effort — a missed release just
-    falls back to TTL expiry."""
-    table = _get_dynamodb().Table(SESSION_TABLE)
-    try:
-        table.delete_item(Key={"sessionId": RUN_LOCK_KEY})
-    except ClientError as e:
-        logger.warning("Failed to release MCP run lock: %s", e)
 
 
 def _load_previous_snapshot(table, composite_key, date_strings):
@@ -218,7 +159,7 @@ def _invoke_notifications(diff):
 
 
 def _fetch_slots_via_scrape(client, golfbox_config, date_str, _cache_session_cb):
-    """Legacy path: log into GolfBox, fetch HTML grid, parse."""
+    """Log into GolfBox, fetch HTML grid, parse."""
     from parser import parse_grid_html
 
     resource_guid = golfbox_config["resource_guid"]
@@ -236,68 +177,23 @@ def _fetch_slots_via_scrape(client, golfbox_config, date_str, _cache_session_cb)
     return parse_grid_html(html)
 
 
-def _fetch_slots_via_mcp(golfbox_config, date_str):
-    """MCP path: call Vardenlab MCP, map to parser-format dict."""
-    import mcp_client
-    from mcp_to_slots import mcp_slots_to_dict
-
-    mcp_slug = golfbox_config.get("mcp_slug")
-    if not mcp_slug:
-        logger.warning("Facility missing mcp_slug; skipping")
-        return None
-
-    mcp_slots = mcp_client.search_tee_times(mcp_slug, date_str, only_free=True)
-    return mcp_slots_to_dict(mcp_slots)
-
-
 def lambda_handler(event, context):
     """AWS Lambda entry point."""
     start_time = time.monotonic()
-    logger.info(
-        "Golf scraper invoked, days_ahead=%d, source=%s",
-        DAYS_AHEAD, GOLF_DATA_SOURCE,
-    )
+    logger.info("Golf scraper invoked, days_ahead=%d", DAYS_AHEAD)
 
-    # MCP path must run one-at-a-time (rotating-refresh-token race). The scrape
-    # path is idempotent and concurrency-safe, so it skips the lock.
-    mcp_mode = GOLF_DATA_SOURCE == "mcp"
-    if mcp_mode and not _acquire_run_lock():
-        logger.warning(
-            "Another golf-scraper MCP run holds the lock; skipping this "
-            "invocation to avoid a refresh-token race",
-        )
-        return {
-            "statusCode": 200,
-            "body": json.dumps({"source": GOLF_DATA_SOURCE, "skipped": "locked"}),
-        }
-
-    try:
-        return _run_scrape(start_time)
-    finally:
-        if mcp_mode:
-            _release_run_lock()
-
-
-def _run_scrape(start_time):
-    """Core scrape/MCP run. Wrapped by lambda_handler's run-lock."""
     from facilities import get_facilities_for_sport, get_golfbox_config
+    from scraper import GolfBoxClient
 
-    # Legacy scrape path also needs login + session caching. MCP path is
-    # stateless from the handler's perspective; mcp_client manages its
-    # own token cache internally.
-    scrape_client = None
-    if GOLF_DATA_SOURCE == "scrape":
-        from scraper import GolfBoxClient
-
-        scrape_client = GolfBoxClient(GOLFBOX_USERNAME, GOLFBOX_PASSWORD)
-        cached_cookies = _get_cached_session()
-        if cached_cookies:
-            scrape_client.restore_cookies(cached_cookies)
-            logger.info("Restored cached GolfBox session")
-        else:
-            if not scrape_client.login():
-                return {"statusCode": 500, "body": "GolfBox login failed"}
-            _cache_session(scrape_client.cookies_dict)
+    scrape_client = GolfBoxClient(GOLFBOX_USERNAME, GOLFBOX_PASSWORD)
+    cached_cookies = _get_cached_session()
+    if cached_cookies:
+        scrape_client.restore_cookies(cached_cookies)
+        logger.info("Restored cached GolfBox session")
+    else:
+        if not scrape_client.login():
+            return {"statusCode": 500, "body": "GolfBox login failed"}
+        _cache_session(scrape_client.cookies_dict)
 
     today = datetime.date.today()
     dates = [today + datetime.timedelta(days=i) for i in range(DAYS_AHEAD)]
@@ -309,13 +205,8 @@ def _run_scrape(start_time):
     full_diff = {}
     total_slots = 0
     fetch_errors = 0
-    auth_failures = 0
-    mcp_auth_aborted = False
 
     for facility_key, config in golf_facilities.items():
-        if mcp_auth_aborted:
-            break
-
         golfbox_config = get_golfbox_config(facility_key)
         if not golfbox_config:
             continue
@@ -327,38 +218,12 @@ def _run_scrape(start_time):
         facility_diff = {}
 
         for date_str in date_strings:
-            current_slots = None
-
-            if GOLF_DATA_SOURCE == "mcp":
-                import mcp_client
-
-                try:
-                    current_slots = _fetch_slots_via_mcp(golfbox_config, date_str)
-                except mcp_client.MCPAuthError as e:
-                    auth_failures += 1
-                    fetch_errors += 1
-                    logger.error("MCP auth failure: %s", e)
-                    if auth_failures >= MCP_AUTH_FAILURE_LIMIT:
-                        logger.error(
-                            "MCP auth failed %d times — aborting run to avoid "
-                            "hammering the token endpoint", auth_failures,
-                        )
-                        mcp_auth_aborted = True
-                        break
-                    continue
-                except Exception as e:
-                    fetch_errors += 1
-                    logger.warning(
-                        "MCP fetch error for %s/%s: %s", facility_key, date_str, e,
-                    )
-                    continue
-            else:
-                current_slots = _fetch_slots_via_scrape(
-                    scrape_client, golfbox_config, date_str, _cache_session,
-                )
-                if current_slots is None:
-                    fetch_errors += 1
-                    continue
+            current_slots = _fetch_slots_via_scrape(
+                scrape_client, golfbox_config, date_str, _cache_session,
+            )
+            if current_slots is None:
+                fetch_errors += 1
+                continue
 
             total_slots += len(current_slots)
             _save_snapshot(availability_table, composite_key, date_str, current_slots)
@@ -376,20 +241,15 @@ def _run_scrape(start_time):
 
     elapsed = time.monotonic() - start_time
     logger.info(
-        "Golf scraper complete: source=%s, slots=%d, errors=%d, auth_failures=%d, "
-        "auth_aborted=%s, diff_keys=%d, elapsed=%.1fs",
-        GOLF_DATA_SOURCE, total_slots, fetch_errors, auth_failures,
-        mcp_auth_aborted, len(full_diff), elapsed,
+        "Golf scraper complete: slots=%d, errors=%d, diff_keys=%d, elapsed=%.1fs",
+        total_slots, fetch_errors, len(full_diff), elapsed,
     )
 
     return {
         "statusCode": 200,
         "body": json.dumps({
-            "source": GOLF_DATA_SOURCE,
             "totalSlots": total_slots,
             "fetchErrors": fetch_errors,
-            "authFailures": auth_failures,
-            "authAborted": mcp_auth_aborted,
             "diffFacilities": len(full_diff),
             "elapsed": round(elapsed, 1),
         }),

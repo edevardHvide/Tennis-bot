@@ -9,9 +9,6 @@ The same code run from a Norwegian residential IP returns the member view
 correctly. TLS impersonation via curl_cffi was tried as a workaround — it
 did not change behavior, but we keep it because it doesn't hurt and may
 help if GolfBox starts UA/TLS-gating in the future.
-
-The Lambda pipeline pivots to the Vardenlab MCP path (see mcp_client.py)
-when GOLF_DATA_SOURCE=mcp, which sidesteps the IP-routing issue entirely.
 """
 
 import logging
