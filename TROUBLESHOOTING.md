@@ -69,3 +69,9 @@ Packaged and deployed via `aws lambda update-function-code`.
 - [ ] Verify a clean run completes and triggers notification emails
 - [ ] Monitor for a few cycles to confirm stability
 - [x] ~~Consider setting reserved concurrency to 1~~ — not possible (account `UnreservedConcurrentExecution` minimum of 10)
+
+## 2026-09-23 — Facility reactivation and retirement
+
+Reactivated Frogner in shared facility configuration and the frontend; verified a scheduled scrape wrote all seven days to DynamoDB at 13:22–13:23 UTC. Removed Harvard and festival UI/source/provisioning code after user requested retirement. No dedicated Harvard/festival Lambdas or schedules were present in the checked regions. Historical database data was retained.
+
+Validation: frontend build passed; notification email-builder tests and standalone newsletter tests passed. Full notification tests have 18 pre-existing failures from fixed June 2026 dates now treated as past; identical failures reproduced using the pre-change facility/email-builder code. Running newsletter and notification suites together also causes module-name collisions.

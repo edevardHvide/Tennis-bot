@@ -11,10 +11,6 @@ from datetime import datetime, timezone
 from facilities import facilities, get_matchi_id, get_display_name, get_golfbox_config, get_oslobooking_config, SPORT_CODES
 
 MATCHI_GENERAL_URL = "https://www.matchi.se"
-HARVARD_REG_URL = (
-    "https://membership.gocrimson.com/Program/GetProgramInstances"
-    "?programID=a20e7ae2-fedc-4a8e-a7c3-236695040c63"
-)
 WEBAPP_URL = "https://availabilitymonitor.club"
 
 
@@ -74,7 +70,7 @@ def _facility_matchi_id(facility_key: str) -> int:
 def _facility_cta(facility_key: str, sport: str = "tennis", date: str = "") -> tuple:
     """Return (url, label) for the CTA button for a given facility.
 
-    Facilities with matchi_id=None are non-Matchi platforms (e.g. Harvard Rec, GolfBox).
+    Facilities with matchi_id=None are non-Matchi platforms (e.g. GolfBox, Oslo kommune).
     """
     golfbox_config = get_golfbox_config(facility_key)
     if golfbox_config and sport == "golf":
@@ -90,9 +86,6 @@ def _facility_cta(facility_key: str, sport: str = "tennis", date: str = "") -> t
     oslobooking_config = get_oslobooking_config(facility_key)
     if oslobooking_config:
         return oslobooking_config["booking_url"], "Book on Oslo kommune"
-    matchi_id = _facility_matchi_id(facility_key)
-    if matchi_id is None:
-        return HARVARD_REG_URL, "Register at Harvard Rec"
     return MATCHI_GENERAL_URL, "Book on Matchi"
 
 

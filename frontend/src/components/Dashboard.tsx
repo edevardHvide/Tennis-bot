@@ -7,7 +7,6 @@ import PreferenceForm from './PreferenceForm';
 import FeatureRequestModal from './FeatureRequestModal';
 import BlacklistCalendar from './BlacklistCalendar';
 import AvailabilityCalendar from './AvailabilityCalendar';
-import FestivalBetaCard from './FestivalBetaCard';
 import SportToggle, { type SportCategory } from './SportToggle';
 import GolfCalendar from './GolfCalendar';
 import GolfPreferenceForm from './GolfPreferenceForm';
@@ -528,9 +527,6 @@ export default function Dashboard({ userId, onLogout }: DashboardProps) {
             )}
           </>
         )}
-
-        {/* Festival ticket monitoring (beta) */}
-        <FestivalBetaCard userId={userId} />
 
         {/* Feature request */}
         <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">

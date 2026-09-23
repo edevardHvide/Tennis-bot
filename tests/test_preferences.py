@@ -983,106 +983,36 @@ class TestRouter:
 
 
 # ---------------------------------------------------------------------------
-# Harvard preferences tests — PREF-01, PREF-03
+# Active and retired facility preferences
 # ---------------------------------------------------------------------------
 
 
-class TestCreatePreferenceHarvard:
-    """Tests verifying PREF-01 (harvard in VALID_FACILITY_IDS) and
-    PREF-03 (preferences API accepts harvard+tennis)."""
-
-    def test_harvard_in_valid_facility_ids(self):
-        """PREF-01: VALID_FACILITY_IDS must include 'harvard'."""
-        import importlib
+class TestFacilityAvailability:
+    def test_frogner_active_and_harvard_retired(self):
         import handler as h
 
-        assert "harvard" in h.VALID_FACILITY_IDS
+        assert "frogner" in h.VALID_FACILITY_IDS
+        assert "harvard" not in h.VALID_FACILITY_IDS
 
-    def test_create_preference_harvard_tennis_accepted(self, dynamo):
-        """PREF-03: POST preference with facilityId=harvard sport=tennis returns 201."""
+    @pytest.mark.parametrize("facility_id,status", [("frogner", 201), ("harvard", 400)])
+    def test_tennis_preference_facility_availability(self, dynamo, facility_id, status):
         import handler as h
 
-        # Register user
-        h.lambda_handler(
-            _event("POST", "/users", {"userId": "test@harvard.edu", "name": "Test User"}),
-            None,
-        )
-
-        # Create harvard+tennis preference
-        resp = h.lambda_handler(
+        _register_user()
+        response = h.lambda_handler(
             _event(
                 "POST",
                 "/users/{userId}/preferences",
-                body={
-                    "facilityId": "harvard",
-                    "sport": "tennis",
-                    "dates": ["monday", "wednesday"],
-                    "timeFrom": "09:00",
-                    "timeTo": "11:00",
-                },
-                path_params={"userId": "test@harvard.edu"},
+                body={**_valid_pref_body(), "facilityId": facility_id, "sport": "tennis"},
+                path_params={"userId": "alice@example.com"},
             ),
             None,
         )
-        assert resp["statusCode"] == 201
-        data = _body(resp)["data"]
-        assert data["facilityId"] == "harvard"
-        assert data["sport"] == "tennis"
-
-    def test_create_preference_harvard_padel_rejected(self, dynamo):
-        """Harvard only supports tennis — padel preference must return 400."""
-        import handler as h
-
-        h.lambda_handler(
-            _event("POST", "/users", {"userId": "test2@harvard.edu", "name": "Test User 2"}),
-            None,
-        )
-
-        resp = h.lambda_handler(
-            _event(
-                "POST",
-                "/users/{userId}/preferences",
-                body={
-                    "facilityId": "harvard",
-                    "sport": "padel",
-                    "dates": ["monday"],
-                    "timeFrom": "09:00",
-                    "timeTo": "11:00",
-                },
-                path_params={"userId": "test2@harvard.edu"},
-            ),
-            None,
-        )
-        assert resp["statusCode"] == 400
-        error = _body(resp)["error"]
-        assert "padel" in error.lower() or "harvard" in error.lower()
-
-    def test_create_preference_harvard_court_type_rejected(self, dynamo):
-        """courtType is only valid for padel — tennis + courtType must return 400."""
-        import handler as h
-
-        h.lambda_handler(
-            _event("POST", "/users", {"userId": "test3@harvard.edu", "name": "Test User 3"}),
-            None,
-        )
-
-        resp = h.lambda_handler(
-            _event(
-                "POST",
-                "/users/{userId}/preferences",
-                body={
-                    "facilityId": "harvard",
-                    "sport": "tennis",
-                    "courtType": "double",
-                    "dates": ["monday"],
-                    "timeFrom": "09:00",
-                    "timeTo": "11:00",
-                },
-                path_params={"userId": "test3@harvard.edu"},
-            ),
-            None,
-        )
-        assert resp["statusCode"] == 400
+        assert response["statusCode"] == status
+        if status == 201:
+            assert _body(response)["data"]["facilityId"] == facility_id
+        else:
+            assert "facilityId" in _body(response)["error"]
 
 
 # ---------------------------------------------------------------------------
