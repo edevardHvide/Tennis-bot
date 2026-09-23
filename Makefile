@@ -3,21 +3,18 @@ REGION    ?= eu-north-1
 ACCOUNT   ?= 605893375372
 
 SCRAPER_FN    = tennis-scraper
-HARVARD_SCRAPER_FN = harvard-scraper
 PREFERENCES_FN = tennis-preferences
 NOTIFICATIONS_FN = tennis-notifications
 NEWSLETTER_FN  = tennis-newsletter
 FEEDBACK_FN    = tennis-feedback
-FESTIVAL_PREFS_FN = festival-preferences
 GOLF_SCRAPER_FN   = golf-scraper
 
 S3_FRONTEND_BUCKET = tennis-bot-frontend
 
 .PHONY: help install deploy-all deploy-scraper deploy-preferences deploy-notifications \
-        deploy-newsletter deploy-feedback deploy-harvard-scraper deploy-frontend \
+        deploy-newsletter deploy-feedback deploy-frontend \
         package-scraper package-preferences package-notifications package-newsletter \
-        package-feedback package-harvard-scraper deploy-dynamo \
-        deploy-festival-dynamo package-festival-preferences deploy-festival-preferences \
+        package-feedback deploy-dynamo \
         package-golf-scraper deploy-golf-scraper \
         validate destroy
 
@@ -111,16 +108,6 @@ package-feedback:
 	@cd lambdas/feedback/package && zip -qr ../../../build/feedback.zip .
 	@echo "   build/feedback.zip ready"
 
-package-harvard-scraper:
-	@echo ">> Packaging harvard-scraper Lambda..."
-	@mkdir -p build
-	@rm -rf lambdas/harvard-scraper/package
-	@uv pip install -r lambdas/harvard-scraper/requirements.txt --target lambdas/harvard-scraper/package --quiet
-	@cp lambdas/harvard-scraper/*.py lambdas/harvard-scraper/package/
-	@cp facilities.py lambdas/harvard-scraper/package/
-	@cd lambdas/harvard-scraper/package && zip -qr ../../../build/harvard-scraper.zip .
-	@echo "   build/harvard-scraper.zip ready"
-
 # ── Lambda deploy ─────────────────────────────────────────────────────────────
 
 deploy-scraper: package-scraper
@@ -163,14 +150,6 @@ deploy-feedback: package-feedback
 		--profile $(PROFILE) --region $(REGION) \
 		--query 'LastUpdateStatus' --output text
 
-deploy-harvard-scraper: package-harvard-scraper
-	@echo ">> Deploying harvard-scraper Lambda..."
-	@aws lambda update-function-code \
-		--function-name $(HARVARD_SCRAPER_FN) \
-		--zip-file fileb://build/harvard-scraper.zip \
-		--profile $(PROFILE) --region $(REGION) \
-		--query 'LastUpdateStatus' --output text
-
 # ── Golf ──────────────────────────────────────────────────────────────────────
 
 package-golf-scraper:
@@ -189,30 +168,6 @@ deploy-golf-scraper: package-golf-scraper
 	@aws lambda update-function-code \
 		--function-name $(GOLF_SCRAPER_FN) \
 		--zip-file fileb://lambdas/golf-scraper/build/function.zip \
-		--profile $(PROFILE) --region $(REGION) \
-		--query 'LastUpdateStatus' --output text
-
-# ── Festival (beta) ──────────────────────────────────────────────────────────
-
-deploy-festival-dynamo:
-	@echo ">> Provisioning festival DynamoDB tables..."
-	@bash infra/dynamo/deploy-festival.sh --profile $(PROFILE)
-
-package-festival-preferences:
-	@echo ">> Packaging festival-preferences Lambda..."
-	@mkdir -p build
-	@rm -rf lambdas/festival-preferences/package
-	@uv pip install -r lambdas/festival-preferences/requirements.txt --target lambdas/festival-preferences/package --quiet
-	@cp lambdas/festival-preferences/*.py lambdas/festival-preferences/package/
-	@cp festivals.py lambdas/festival-preferences/package/
-	@cd lambdas/festival-preferences/package && zip -qr ../../../build/festival-preferences.zip .
-	@echo "   build/festival-preferences.zip ready"
-
-deploy-festival-preferences: package-festival-preferences
-	@echo ">> Deploying festival-preferences Lambda..."
-	@aws lambda update-function-code \
-		--function-name $(FESTIVAL_PREFS_FN) \
-		--zip-file fileb://build/festival-preferences.zip \
 		--profile $(PROFILE) --region $(REGION) \
 		--query 'LastUpdateStatus' --output text
 

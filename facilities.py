@@ -22,6 +22,11 @@ SPORT_CODES = {"tennis": 1, "padel": 5}
 
 # Active facilities that are currently monitored
 facilities = {
+    "frogner": {
+        "matchi_id": 2259,
+        "display_name": "Frogner",
+        "sports": ["tennis"],
+    },
     "ota": {
         "matchi_id": 1779,
         "display_name": "OTA",
@@ -66,11 +71,6 @@ facilities = {
         "matchi_id": 948,
         "display_name": "InterPadel Bergen (Sandsli)",
         "sports": ["padel"],
-    },
-    "harvard": {
-        "matchi_id": None,  # Harvard uses Innosoft Fusion, not matchi.se — no matchi_id
-        "display_name": "Harvard Recreation",
-        "sports": ["tennis"],
     },
     "onsoy": {
         "matchi_id": None,  # GolfBox platform, not matchi.se
@@ -126,11 +126,6 @@ facilities = {
 
 # Inactive facilities — temporarily disabled to reduce scrape time
 inactive_facilities = {
-    "frogner": {
-        "matchi_id": 2259,
-        "display_name": "Frogner",
-        "sports": ["tennis"],
-    },
     "ullern": {
         "matchi_id": 219,
         "display_name": "Ullern Tennisklubb",

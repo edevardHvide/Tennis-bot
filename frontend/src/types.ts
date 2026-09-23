@@ -67,6 +67,7 @@ export interface Facility {
 }
 
 export const FACILITIES: Facility[] = [
+  { id: 'frogner', displayName: 'Frogner', sports: ['tennis'] },
   { id: 'ota', displayName: 'OTA (Oslo Tennis Arena)', sports: ['tennis', 'padel'] },
   { id: 'bergentennisarena', displayName: 'Bergen Tennis Arena', sports: ['tennis'] },
   { id: 'voldslokka', displayName: 'Voldsløkka', sports: ['tennis'] },
@@ -76,7 +77,6 @@ export const FACILITIES: Facility[] = [
   { id: 'nordstrand', displayName: 'Nordstrand Tennisklubb', sports: ['tennis'] },
   { id: 'bergenpadelklubb', displayName: 'Bergen Padelklubb', sports: ['padel'] },
   { id: 'interpadelbergen', displayName: 'InterPadel Bergen (Sandsli)', sports: ['padel'] },
-  { id: 'harvard', displayName: 'Harvard Recreation', sports: ['tennis'] },
   { id: 'onsoy', displayName: 'Onsøy Golf', sports: ['golf'] },
   { id: 'haga', displayName: 'Haga GK', sports: ['golf'] },
   { id: 'grini', displayName: 'Grini GK', sports: ['golf'] },
@@ -116,25 +116,6 @@ export interface AvailabilityResponse {
   freshness: Record<string, { updatedAt: string }>;
   nextUpdateAt: string;
   generatedAt: string;
-}
-
-// ── Festival ticket monitoring (beta) ────────────────────────────────────────
-
-export interface Festival {
-  festivalId: string;
-  name: string;
-  dates: string;
-  location: string;
-  platform: string;
-  ticketAvailable: boolean | null;
-  ticketStatusText: string;
-  lastCheckedAt: string | null;
-  url: string;
-}
-
-export interface FestivalSubscription {
-  festivalId: string;
-  enabled: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
