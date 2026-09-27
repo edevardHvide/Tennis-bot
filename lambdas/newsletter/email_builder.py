@@ -5,12 +5,33 @@ Day-first grouping: users scan "what's Monday?" not "what's at Frogner?"
 """
 
 from datetime import datetime, timezone
+from typing import Callable
 
 # ---------------------------------------------------------------------------
 # Facility configuration — imported from shared facilities module
 # ---------------------------------------------------------------------------
 
 from facilities import facilities, get_matchi_id, get_display_name, SPORT_CODES
+
+WeatherLookup = Callable[[str, str, str], dict | None]
+
+
+def _weather_suffix(lookup: WeatherLookup | None, facility: str, date: str, slot: str) -> str:
+    """Weather is decorative: unavailable or invalid forecasts never block mail."""
+    if lookup is None:
+        return ""
+    try:
+        weather = lookup(facility.split("#", 1)[0], date, slot)
+        if not weather:
+            return ""
+        parts = [weather.get("emoji") or ""]
+        if weather.get("temp") is not None:
+            parts.append(f"{round(weather['temp'])}°C")
+        suffix = " ".join(part for part in parts if part)
+        return f" {suffix}" if suffix else ""
+    except Exception:
+        return ""
+
 
 MATCHI_GENERAL_URL = "https://www.matchi.se"
 WEBAPP_URL = "https://availabilitymonitor.club"
@@ -106,6 +127,7 @@ def build_newsletter_email(
     matches: list[dict],
     week_start: str,
     week_end: str,
+    weather_lookup: WeatherLookup | None = None,
 ) -> dict:
     """Build HTML + plain text weekly newsletter email.
 
@@ -115,6 +137,8 @@ def build_newsletter_email(
                  facilityId, date, courts.
         week_start: YYYY-MM-DD of Monday.
         week_end: YYYY-MM-DD of Sunday.
+
+        weather_lookup: optional facility/date/time lookup for an icon and temperature.
 
     Returns:
         Dict with keys ``subject``, ``html_body``, ``text_body``.
@@ -160,9 +184,11 @@ def build_newsletter_email(
             html_parts.append(f'<div class="facility">')
             html_parts.append(f"<h3>{name}</h3>")
             for court in courts:
+                weather = _weather_suffix(weather_lookup, facility_key, date_str, court["time_slot"])
                 html_parts.append(
                     f'<div class="court">'
-                    f'<span class="time">{court["time_slot"]}</span> '
+                    f'<span class="time">{court["time_slot"]}</span>'
+                    f'<span style="color:#475569; font-size:13px;">{weather}</span> '
                     f'&mdash; {court["court_name"]}'
                     f"</div>"
                 )
@@ -207,8 +233,9 @@ def build_newsletter_email(
             name = _facility_name(facility_key)
             text_parts.append(f"  {name}")
             for court in courts:
+                weather = _weather_suffix(weather_lookup, facility_key, date_str, court["time_slot"])
                 text_parts.append(
-                    f"    {court['time_slot']}  {court['court_name']}"
+                    f"    {court['time_slot']}{weather}  {court['court_name']}"
                 )
         text_parts.append("")
 

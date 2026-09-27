@@ -69,6 +69,7 @@ AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 AVAILABILITY_TABLE = os.environ.get("AVAILABILITY_TABLE", "tennis-availability")
 PREFS_TABLE = os.environ.get("PREFS_TABLE", "tennis-preferences")
 USERS_TABLE = os.environ.get("USERS_TABLE", "tennis-users")
+WEATHER_TABLE = os.environ.get("WEATHER_TABLE", "tennis-weather")
 SES_FROM_EMAIL = os.environ.get("SES_FROM_EMAIL", "")
 NEWSLETTER_TEST_RECIPIENT = os.environ.get("NEWSLETTER_TEST_RECIPIENT", "")
 
@@ -251,7 +252,11 @@ def lambda_handler(event: dict, context) -> dict:
     from matcher import match_preferences              # noqa: PLC0415
     from email_builder import build_newsletter_email   # noqa: PLC0415
 
+    from weather import make_weather_lookup
+    from facilities import get_weather_region
+
     dynamo = _get_dynamodb()
+    weather_lookup = make_weather_lookup(dynamo.Table(WEATHER_TABLE), get_weather_region)
 
     # Step 1 — Compute coming week dates
     week_dates = _compute_next_week()
@@ -324,7 +329,9 @@ def lambda_handler(event: dict, context) -> dict:
     # Step 7 — Send emails
     emails_sent = 0
     for user_id, user_match_list in user_matches.items():
-        email = build_newsletter_email(user_id, user_match_list, week_start, week_end)
+        email = build_newsletter_email(
+            user_id, user_match_list, week_start, week_end, weather_lookup=weather_lookup,
+        )
         success = _send_email(
             recipient=user_id,
             subject=email["subject"],
