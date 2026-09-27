@@ -47,11 +47,22 @@ create_table tennis-feedback \
   --attribute-definitions AttributeName=feedbackId,AttributeType=S \
   --key-schema AttributeName=feedbackId,KeyType=HASH
 
+create_table tennis-weather \
+  --attribute-definitions AttributeName=region,AttributeType=S AttributeName=hourIso,AttributeType=S \
+  --key-schema AttributeName=region,KeyType=HASH AttributeName=hourIso,KeyType=RANGE
+
 # Enable TTL on notifications (idempotent)
 aws dynamodb update-time-to-live \
   --table-name tennis-notifications \
   --time-to-live-specification Enabled=true,AttributeName=ttl \
   --profile "$PROFILE" --region "$REGION" &>/dev/null
 echo "  [ok]   TTL enabled on tennis-notifications"
+
+# Enable TTL on weather (idempotent)
+aws dynamodb update-time-to-live \
+  --table-name tennis-weather \
+  --time-to-live-specification Enabled=true,AttributeName=ttl \
+  --profile "$PROFILE" --region "$REGION" &>/dev/null
+echo "  [ok]   TTL enabled on tennis-weather"
 
 echo "Done."

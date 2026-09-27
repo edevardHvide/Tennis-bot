@@ -73,6 +73,7 @@ AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 NOTIFICATIONS_TABLE = os.environ.get("NOTIFICATIONS_TABLE", "tennis-notifications")
 PREFS_TABLE = os.environ.get("PREFS_TABLE", "tennis-preferences")
 USERS_TABLE = os.environ.get("USERS_TABLE", "tennis-users")
+WEATHER_TABLE = os.environ.get("WEATHER_TABLE", "tennis-weather")
 SES_FROM_EMAIL = os.environ.get("SES_FROM_EMAIL", "")
 
 # SMTP configuration (takes priority over SES when SMTP_HOST is set)
@@ -224,7 +225,11 @@ def lambda_handler(event: dict, context) -> dict:
             },
         }
 
+    from weather import make_weather_lookup
+    from facilities import get_weather_region
+
     dynamo = _get_dynamodb()
+    weather_lookup = make_weather_lookup(dynamo.Table(WEATHER_TABLE), get_weather_region)
     prefs_table = dynamo.Table(PREFS_TABLE)
     notif_table = dynamo.Table(NOTIFICATIONS_TABLE)
 
@@ -258,7 +263,7 @@ def lambda_handler(event: dict, context) -> dict:
 
     emails_sent = 0
     for user_id, user_match_list in user_matches.items():
-        email = build_notification_email(user_id, user_match_list)
+        email = build_notification_email(user_id, user_match_list, weather_lookup=weather_lookup)
         success = _send_email(
             recipient=user_id,
             subject=email["subject"],

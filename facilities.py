@@ -20,59 +20,76 @@ To re-enable a facility:
 # Matchi sport code mapping
 SPORT_CODES = {"tennis": 1, "padel": 5}
 
+WEATHER_REGIONS: dict[str, tuple[float, float]] = {
+    "oslo": (59.9139, 10.7522),
+    "bergen": (60.3913, 5.3221),
+    "fredrikstad": (59.2189, 10.9298),
+}
+
 # Active facilities that are currently monitored
 facilities = {
     "frogner": {
+        "weather_region": "oslo",
         "matchi_id": 2259,
         "display_name": "Frogner",
         "sports": ["tennis"],
     },
     "ota": {
+        "weather_region": "oslo",
         "matchi_id": 1779,
         "display_name": "OTA",
         "sports": ["tennis", "padel"],
     },
     "bergentennisarena": {
+        "weather_region": "bergen",
         "matchi_id": 301,
         "display_name": "Bergen Tennis Arena",
         "sports": ["tennis"],
     },
     "furuset": {
+        "weather_region": "oslo",
         "matchi_id": 542,
         "display_name": "Furuset",
         "sports": ["tennis", "padel"],
     },
     "interpadel": {
+        "weather_region": "oslo",
         "matchi_id": 872,
         "display_name": "InterPadel Oslo",
         "sports": ["padel"],
     },
     "nordicpadel": {
+        "weather_region": "oslo",
         "matchi_id": 811,
         "display_name": "Nordic Padel",
         "sports": ["padel"],
     },
     "nordstrand": {
+        "weather_region": "oslo",
         "matchi_id": 178,
         "display_name": "Nordstrand Tennisklubb",
         "sports": ["tennis"],
     },
     "voldslokka": {
+        "weather_region": "oslo",
         "matchi_id": 642,
         "display_name": "Voldsløkka",
         "sports": ["tennis"],
     },
     "bergenpadelklubb": {
+        "weather_region": "bergen",
         "matchi_id": 1659,
         "display_name": "Bergen Padelklubb",
         "sports": ["padel"],
     },
     "interpadelbergen": {
+        "weather_region": "bergen",
         "matchi_id": 948,
         "display_name": "InterPadel Bergen (Sandsli)",
         "sports": ["padel"],
     },
     "onsoy": {
+        "weather_region": "fredrikstad",
         "matchi_id": None,  # GolfBox platform, not matchi.se
         "display_name": "Onsøy Golf",
         "sports": ["golf"],
@@ -82,6 +99,7 @@ facilities = {
         },
     },
     "haga": {
+        "weather_region": "oslo",
         "matchi_id": None,
         "display_name": "Haga GK",
         "sports": ["golf"],
@@ -91,6 +109,7 @@ facilities = {
         },
     },
     "grini": {
+        "weather_region": "oslo",
         "matchi_id": None,
         "display_name": "Grini GK",
         "sports": ["golf"],
@@ -100,6 +119,7 @@ facilities = {
         },
     },
     "losby": {
+        "weather_region": "oslo",
         "matchi_id": None,
         "display_name": "Losby Golfklubb",
         "sports": ["golf"],
@@ -109,6 +129,7 @@ facilities = {
         },
     },
     "rivertz": {
+        "weather_region": "oslo",
         "matchi_id": None,  # Oslo kommune booking platform, not matchi.se
         "display_name": "Padelbane Arkitekt Rivertz' plass",
         "sports": ["padel"],
@@ -187,3 +208,8 @@ def get_oslobooking_config(facility_key: str):
     if facility is None:
         return None
     return facility.get("oslobooking")
+
+
+def get_weather_region(facility_key: str) -> str | None:
+    """Return the forecast region for an active facility, if configured."""
+    return facilities.get(facility_key, {}).get("weather_region")

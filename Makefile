@@ -7,14 +7,15 @@ PREFERENCES_FN = tennis-preferences
 NOTIFICATIONS_FN = tennis-notifications
 NEWSLETTER_FN  = tennis-newsletter
 FEEDBACK_FN    = tennis-feedback
+WEATHER_FN     = tennis-weather
 GOLF_SCRAPER_FN   = golf-scraper
 
 S3_FRONTEND_BUCKET = tennis-bot-frontend
 
 .PHONY: help install deploy-all deploy-scraper deploy-preferences deploy-notifications \
-        deploy-newsletter deploy-feedback deploy-frontend \
+        deploy-newsletter deploy-feedback deploy-weather deploy-frontend \
         package-scraper package-preferences package-notifications package-newsletter \
-        package-feedback deploy-dynamo \
+        package-feedback package-weather deploy-dynamo \
         package-golf-scraper deploy-golf-scraper \
         validate destroy
 
@@ -85,6 +86,7 @@ package-notifications:
 	@uv pip install -r lambdas/notifications/requirements.txt --target lambdas/notifications/package --quiet
 	@cp lambdas/notifications/*.py lambdas/notifications/package/
 	@cp facilities.py lambdas/notifications/package/
+	@cp weather.py lambdas/notifications/package/
 	@cd lambdas/notifications/package && zip -qr ../../../build/notifications.zip .
 	@echo "   build/notifications.zip ready"
 
@@ -95,6 +97,7 @@ package-newsletter:
 	@uv pip install -r lambdas/newsletter/requirements.txt --target lambdas/newsletter/package --quiet
 	@cp lambdas/newsletter/*.py lambdas/newsletter/package/
 	@cp facilities.py lambdas/newsletter/package/
+	@cp weather.py lambdas/newsletter/package/
 	@cp lambdas/notifications/matcher.py lambdas/newsletter/package/
 	@cd lambdas/newsletter/package && zip -qr ../../../build/newsletter.zip .
 	@echo "   build/newsletter.zip ready"
@@ -107,6 +110,17 @@ package-feedback:
 	@cp lambdas/feedback/*.py lambdas/feedback/package/
 	@cd lambdas/feedback/package && zip -qr ../../../build/feedback.zip .
 	@echo "   build/feedback.zip ready"
+
+package-weather:
+	@mkdir -p build
+	@rm -rf lambdas/weather/package
+	@rm -f build/weather.zip
+	@uv pip install -r lambdas/weather/requirements.txt --target lambdas/weather/package --quiet
+	@cp lambdas/weather/*.py facilities.py weather.py lambdas/weather/package/
+	@cd lambdas/weather/package && zip -qr ../../../build/weather.zip .
+
+deploy-weather: package-weather
+	@aws lambda update-function-code --function-name $(WEATHER_FN) --zip-file fileb://build/weather.zip --profile $(PROFILE) --region $(REGION) --query 'LastUpdateStatus' --output text
 
 # ── Lambda deploy ─────────────────────────────────────────────────────────────
 
@@ -192,7 +206,7 @@ deploy-frontend:
 
 # ── Deploy all ────────────────────────────────────────────────────────────────
 
-deploy-all: deploy-dynamo deploy-scraper deploy-preferences deploy-notifications deploy-newsletter deploy-feedback deploy-frontend
+deploy-all: deploy-dynamo deploy-scraper deploy-preferences deploy-notifications deploy-newsletter deploy-feedback deploy-weather deploy-frontend
 	@echo ""
 	@echo "All components deployed."
 
